@@ -4,7 +4,7 @@ PRIORITY: p2
 REPOS: lunarpup
 COMPLEXITY: architectural
 TOUCHES: src/r3f-shell/ExperienceShell.tsx, src/r3f-shell/MainMenu.tsx, src/r3f-shell/MultiplayerPanel.tsx, src/r3f-shell/RosterOverlay.tsx, src/r3f-shell/PresenceChip.tsx, src/ui/multiplayer.ts, src/ui/multiplayer.css, src/game/multiplayer.ts, src/net/client.ts, src/net/protocol.ts, src/server/rooms.ts, src/server/multiplayer.ts, netlify/, test/browser/private-multiplayer.spec.ts, src/server/multiplayer.test.ts, docs/private-multiplayer.md
-BLOCKED_BY: 16, 20, 21
+BLOCKED_BY: 16, 20, 21, 25
 
 ## Goal
 

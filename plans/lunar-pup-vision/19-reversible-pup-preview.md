@@ -4,7 +4,7 @@ PRIORITY: p0
 REPOS: lunarpup
 COMPLEXITY: architectural
 TOUCHES: src/r3f-shell/Player.tsx, src/r3f-shell/CameraRig.tsx, src/r3f-shell/GameCanvas.tsx, src/r3f-shell/PreviewPup.tsx, src/game/cosmetics.ts, src/game/types.ts, src/ui/previewState.ts, content/cosmetics/, src/game/cosmetics.test.ts, src/ui/previewState.test.ts, test/browser/pup-preview.spec.ts
-BLOCKED_BY: 15
+BLOCKED_BY: 15, 25
 
 ## Goal
 

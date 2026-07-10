@@ -4,7 +4,7 @@ PRIORITY: p0
 REPOS: lunarpup
 COMPLEXITY: architectural
 TOUCHES: src/net/session.ts, src/net/protocol.ts, src/server/guestSession.ts, src/server/router.ts, src/server/cosmetics.ts, src/server/lootbox.ts, src/server/gamemodes.ts, src/server/rooms.ts, src/server/wallet.ts, netlify/, src/server/guestSession.test.ts, src/net/session.test.ts, docs/session-transport.md
-BLOCKED_BY: 15
+BLOCKED_BY: 15, 25
 
 ## Goal
 

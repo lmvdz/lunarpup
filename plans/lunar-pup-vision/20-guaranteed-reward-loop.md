@@ -4,7 +4,7 @@ PRIORITY: p0
 REPOS: lunarpup
 COMPLEXITY: architectural
 TOUCHES: src/modes/client.ts, src/r3f-shell/ExperienceShell.tsx, src/r3f-shell/RewardResult.tsx, src/r3f-shell/PreviewPup.tsx, src/ui/experienceState.ts, src/ui/economyResources.ts, src/server/gamemodes.ts, src/server/economyCommands.ts, content/cosmetics/, src/ui/reward-result.css, test/browser/first-session.spec.ts, src/ui/economyResources.test.ts
-BLOCKED_BY: 18, 19
+BLOCKED_BY: 18, 19, 25
 
 ## Goal
 

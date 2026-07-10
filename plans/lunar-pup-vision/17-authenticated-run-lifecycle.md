@@ -4,7 +4,7 @@ PRIORITY: p0
 REPOS: lunarpup
 COMPLEXITY: architectural
 TOUCHES: src/contracts/gamemode.ts, src/modes/client.ts, src/server/gamemodes.ts, src/server/runLifecycle.ts, src/contracts/services.ts, db/migrations/, src/server/runLifecycle.test.ts, src/modes/replayRun.test.ts, docs/run-integrity.md
-BLOCKED_BY: 16
+BLOCKED_BY: 16, 25
 
 ## Goal
 

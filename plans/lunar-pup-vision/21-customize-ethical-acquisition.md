@@ -4,7 +4,7 @@ PRIORITY: p1
 REPOS: lunarpup
 COMPLEXITY: architectural
 TOUCHES: src/r3f-shell/ExperienceShell.tsx, src/r3f-shell/MainMenu.tsx, src/r3f-shell/CustomizeView.tsx, src/r3f-shell/PreviewPup.tsx, src/ui/economyResources.ts, src/ui/cosmetics.ts, src/game/cosmetics.ts, src/server/cosmetics.ts, src/server/lootbox.ts, src/contracts/cosmetic.ts, content/cosmetics/, src/ui/customize.css, test/browser/customize.spec.ts, src/ui/economyResources.test.ts, docs/lootbox.md
-BLOCKED_BY: 20
+BLOCKED_BY: 20, 25
 
 ## Goal
 

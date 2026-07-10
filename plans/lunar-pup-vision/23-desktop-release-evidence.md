@@ -4,7 +4,7 @@ PRIORITY: p0
 REPOS: lunarpup
 COMPLEXITY: research
 TOUCHES: test/browser/, package.json, docs/product-quality-budgets.md, docs/playtests/, README.md, plans/lunar-pup-vision/
-BLOCKED_BY: 21, 22
+BLOCKED_BY: 21, 22, 25
 
 ## Goal
 

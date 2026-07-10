@@ -4,7 +4,7 @@ PRIORITY: p1
 REPOS: lunarpup
 COMPLEXITY: research
 TOUCHES: src/game/input.ts, src/r3f-shell/GameCanvas.tsx, src/r3f-shell/CameraRig.tsx, src/r3f-shell/TouchControls.tsx, src/r3f-shell/IntentViews.tsx, src/ui/mobile.css, src/ui/motion.ts, test/browser/mobile-run.spec.ts, docs/mobile-product-decision.md, README.md
-BLOCKED_BY: 23
+BLOCKED_BY: 23, 25
 
 ## Goal
 

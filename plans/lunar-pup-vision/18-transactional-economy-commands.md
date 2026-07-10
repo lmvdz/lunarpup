@@ -4,7 +4,7 @@ PRIORITY: p0
 REPOS: lunarpup
 COMPLEXITY: architectural
 TOUCHES: src/contracts/services.ts, src/server/economyCommands.ts, src/server/cosmetics.ts, src/server/lootbox.ts, src/server/gamemodes.ts, db/migrations/, src/server/economyCommands.test.ts, src/contracts/services.test.ts, docs/economy-commands.md
-BLOCKED_BY: 17
+BLOCKED_BY: 17, 25
 
 ## Goal
 
