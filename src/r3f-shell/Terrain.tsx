@@ -1,75 +1,80 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSafeFrame } from './canvasCrash.tsx';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { chunkSize, worldConfig } from '../content/worldConfig.ts';
-import { getTerrainChunkPlan, getTerrainHeight } from '../game/terrain.ts';
-import type { TerrainChunkDescriptor } from '../game/terrain.ts';
-import { getPlayerRoot } from '../game/runtime.ts';
+import { worldConfig } from '../content/worldConfig.ts';
+import type { QualityPreset } from '../content/qualityConfig.ts';
+import {
+    createTerrainRaymarchMaterial,
+    disposeTerrainRaymarchMaterial,
+    type TerrainRaymarchUniforms,
+} from '../game/nanite/terrainRaymarchMaterial.ts';
 import { useGame } from './GameProvider.tsx';
+import { useGameStore } from './gameStore.ts';
 
-type TerrainMaterials = Record<TerrainChunkDescriptor['lodName'], THREE.MeshStandardMaterial>;
+const FULLSCREEN_TRIANGLE = new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]);
 
-function createChunkGeometry({ cx, cz, segments }: TerrainChunkDescriptor) {
-    const geometry = new THREE.PlaneGeometry(chunkSize, chunkSize, segments, segments);
-    geometry.rotateX(-Math.PI / 2);
-    const positions = geometry.attributes.position!;
-    const originX = cx * chunkSize;
-    const originZ = cz * chunkSize;
-
-    for (let index = 0; index < positions.count; index++) {
-        positions.setY(index, getTerrainHeight(originX + positions.getX(index), originZ + positions.getZ(index)));
+function stepCountForPreset(preset: QualityPreset): number {
+    switch (preset) {
+        case 'low': return 64;
+        case 'medium': return 96;
+        case 'high': return 128;
     }
-    geometry.computeVertexNormals();
-    return geometry;
-}
-
-function TerrainChunk({ chunk, material }: { chunk: TerrainChunkDescriptor; material: THREE.MeshStandardMaterial }) {
-    const geometry = useMemo(() => createChunkGeometry(chunk), [chunk]);
-
-    useEffect(() => () => geometry.dispose(), [geometry]);
-
-    return <mesh geometry={geometry} material={material} position={[chunk.cx * chunkSize, 0, chunk.cz * chunkSize]} receiveShadow dispose={null} />;
 }
 
 export function Terrain() {
-    const { runtime, ready } = useGame();
-    const [chunks, setChunks] = useState<TerrainChunkDescriptor[]>(() => getTerrainChunkPlan(0, 0));
-    const currentChunk = useRef('');
-    const materials = useMemo<TerrainMaterials>(() => {
-        const entries = Object.entries(worldConfig.terrain.surfaces).map(([lodName, surface]) => {
-            const material = new THREE.MeshStandardMaterial({
-                color: surface.color,
-                roughness: surface.roughness,
-                metalness: surface.metalness,
-                flatShading: surface.flatShading,
-            });
-            return [lodName, material] as const;
-        });
-        return Object.fromEntries(entries) as TerrainMaterials;
+    const { runtime } = useGame();
+    const qualityPreset = useGameStore((state) => state.qualityPreset);
+
+    const geometry = useMemo(() => {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(FULLSCREEN_TRIANGLE, 3));
+        return g;
     }, []);
 
-    useEffect(() => () => Object.values(materials).forEach((material) => material.dispose()), [materials]);
-
-    useSafeFrame(() => {
-        if (!ready.current) return;
-
-        const root = getPlayerRoot(runtime.current);
-        if (!root) return;
-
-        const cx = Math.round(root.position.x / chunkSize);
-        const cz = Math.round(root.position.z / chunkSize);
-        const key = `${cx},${cz}`;
-        if (key === currentChunk.current) return;
-
-        currentChunk.current = key;
-        const nextChunks = getTerrainChunkPlan(root.position.x, root.position.z);
-        runtime.current.renderedChunkCount = nextChunks.length;
-        setChunks(nextChunks);
-    });
+    const material = useMemo(() => {
+        const sun = new THREE.Color(worldConfig.environment.directionalLight.color)
+            .multiplyScalar(worldConfig.environment.directionalLight.intensity);
+        const sunPos = new THREE.Vector3(
+            ...(worldConfig.environment.directionalLight.position as [number, number, number]),
+        );
+        const uniforms: TerrainRaymarchUniforms = {
+            uMaxDistance: { value: worldConfig.camera.far },
+            uSteps: { value: stepCountForPreset(qualityPreset) },
+            uNormalDelta: { value: worldConfig.terrain.normalSampleDelta },
+            uSunDir: { value: sunPos },
+            uSunColor: { value: sun },
+            uAmbient: {
+                value: new THREE.Color(worldConfig.environment.ambientLight.color)
+                    .multiplyScalar(worldConfig.environment.ambientLight.intensity),
+            },
+            uSurfaceColor: { value: new THREE.Color(worldConfig.terrain.surfaces.near.color) },
+            uFogColor: { value: new THREE.Color(worldConfig.environment.fog.color) },
+            uFogDensity: { value: worldConfig.environment.fog.density },
+        };
+        return createTerrainRaymarchMaterial(uniforms);
+    }, [qualityPreset]);
 
     useEffect(() => {
-        runtime.current.renderedChunkCount = chunks.length;
-    }, [chunks.length, runtime]);
+        runtime.current.renderedTerrainRings = 1;
+    }, [runtime]);
 
-    return <group>{chunks.map((chunk) => <TerrainChunk key={chunk.key} chunk={chunk} material={materials[chunk.lodName]} />)}</group>;
+    useEffect(() => {
+        return () => {
+            disposeTerrainRaymarchMaterial(material);
+        };
+    }, [material]);
+
+    useEffect(() => {
+        return () => {
+            geometry.dispose();
+        };
+    }, [geometry]);
+
+    return (
+        <mesh
+            frustumCulled={false}
+            renderOrder={-1000}
+            geometry={geometry}
+            material={material}
+        />
+    );
 }

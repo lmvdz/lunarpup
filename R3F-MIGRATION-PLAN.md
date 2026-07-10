@@ -83,7 +83,12 @@ Goal: R3F owns local player presentation and camera rig; shared simulation stays
 
 - [x] Define animal, board, material, and loadout contracts in `src/content/`.
 - [ ] Add effects registry.
-- [ ] Install/use Drei only where useful: asset loading, preloading, performance helpers, controls if retained after custom camera audit.
+- [x] Install/use Drei for environment lighting, stars, and performance monitoring. Verified with `bun run typecheck`, `bun test` (62 passed), and `bun run build`.
+- [x] Velocity-aware terrain streaming with worker mesh builds, geometry cache, placeholder chunks, and frame budget (`terrainStreaming.ts`, `terrainMeshPool.ts`). Verified with `bun test` terrain streaming/mesh builder suites.
+- [x] Photoreal rendering pipeline: ACES tone mapping, IBL `Environment`, quality presets, post-processing bloom/AO (`PostProcessing.tsx`, `qualityConfig.ts`). Verified with `bun run typecheck` and `bun run build`.
+- [x] Terrain generator v2 (domain warp, refined craters) plus splat lunar materials (`terrainMath.ts`, `TerrainMaterial.tsx`). Golden height tests updated.
+- [x] Seamless terrain LOD improvements: analytical normals, chunk skirts, higher near/far segment bands (`terrainMeshBuilder.ts`). Edge-height regression test added.
+- [x] Photoreal HUD refresh: CSS design tokens, speed arc gauge, minimap contours/north indicator (`styles.css`, `SpeedHud.tsx`, `minimapDraw.ts`).
 - [ ] Load GLTF assets with `Suspense`, fallbacks, preloading, and disposal rules.
 - [ ] Add dog + one alternate animal, classic board + one alternate board, and material variants.
 - [ ] Add model attachment points and animation mapping.
@@ -111,7 +116,7 @@ Goal: R3F owns local player presentation and camera rig; shared simulation stays
 
 ## Current batch
 
-Phases 2–4 complete. Next: remote-player interpolation polish and multiplayer lifecycle hardening (Phase 6).
+Phase 5 photoreal graphics and terrain streaming batch complete. Next: remote-player interpolation polish and multiplayer lifecycle hardening (Phase 6).
 
 ## Reference docs used
 

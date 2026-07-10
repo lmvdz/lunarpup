@@ -48,14 +48,17 @@ export function MinimapPanel() {
 
     return (
         <section id="minimap-panel" aria-label="Map">
-            <h2>🗺️ Map</h2>
-            <canvas
+            <h2>Terrain Map</h2>
+            <div className="minimap-wrap">
+                <span className="minimap-north" aria-hidden="true">N</span>
+                <canvas
                 ref={canvasRef}
                 className="minimap-canvas"
                 width={MINIMAP_SIZE}
                 height={MINIMAP_SIZE}
                 aria-label="Terrain map with player positions"
             />
+            </div>
         </section>
     );
 }

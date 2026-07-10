@@ -1,38 +1,7 @@
 import type * as THREE from 'three';
 import type { PhysicsState } from './types.ts';
-import { chunkSize, getTerrainLod, terrainViewDistance, worldConfig } from '../content/worldConfig.ts';
+import { worldConfig } from '../content/worldConfig.ts';
 import { calculateTerrainHeight } from './terrainMath.ts';
-
-export type TerrainChunkDescriptor = {
-    key: string;
-    cx: number;
-    cz: number;
-    lodName: 'near' | 'mid' | 'far';
-    segments: number;
-};
-
-function chunkKey(cx: number, cz: number) {
-    return `${cx},${cz}`;
-}
-
-export function getTerrainChunkPlan(x: number, z: number): TerrainChunkDescriptor[] {
-    const playerCx = Math.round(x / chunkSize);
-    const playerCz = Math.round(z / chunkSize);
-    const chunks: TerrainChunkDescriptor[] = [];
-    const padding = worldConfig.terrain.viewDistancePadding;
-
-    for (let dz = -terrainViewDistance; dz <= terrainViewDistance; dz++) {
-        for (let dx = -terrainViewDistance; dx <= terrainViewDistance; dx++) {
-            const dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist > terrainViewDistance + padding) continue;
-            const cx = playerCx + dx;
-            const cz = playerCz + dz;
-            chunks.push({ key: chunkKey(cx, cz), cx, cz, ...getTerrainLod(dist) });
-        }
-    }
-
-    return chunks;
-}
 
 export { calculateTerrainHeight } from './terrainMath.ts';
 

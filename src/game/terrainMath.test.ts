@@ -6,11 +6,12 @@ describe('calculateTerrainHeight', () => {
         expect(calculateTerrainHeight(120, -340)).toBe(calculateTerrainHeight(120, -340));
     });
 
+    // Heights updated after domain-warped ridges and refined crater profiles.
     test.each([
-        { x: 0, z: 0, expected: 10.03724922500729 },
-        { x: 120, z: -340, expected: 60.187584552641816 },
-        { x: 720, z: 560, expected: 22.455596019685704 },
-        { x: -1024, z: 2048, expected: 30.913507418734802 },
+        { x: 0, z: 0, expected: 13.414347787423988 },
+        { x: 120, z: -340, expected: 50.69646287962965 },
+        { x: 720, z: 560, expected: 24.183133568713664 },
+        { x: -1024, z: 2048, expected: 44.09242115439644 },
     ])('preserves the terrain shape at ($x, $z)', ({ x, z, expected }) => {
         expect(calculateTerrainHeight(x, z)).toBeCloseTo(expected, 9);
     });

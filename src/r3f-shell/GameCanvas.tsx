@@ -1,8 +1,10 @@
 import { Component, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
+import { PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
 import { worldConfig } from '../content/worldConfig.ts';
+import { getQualitySettings } from '../content/qualityConfig.ts';
 import { handleKeys } from '../game/input.ts';
 import { stepSimulation } from '../game/simulation.ts';
 import { lerpRemotePlayers } from '../game/remotePlayerMotion.ts';
@@ -13,6 +15,7 @@ import { Player } from './Player.tsx';
 import { RemotePlayers } from './RemotePlayers.tsx';
 import { Terrain } from './Terrain.tsx';
 import { WorldEnvironment } from './WorldEnvironment.tsx';
+import { PostProcessing } from './PostProcessing.tsx';
 import { CanvasCrashReporter, CrashScreen, useSafeFrame } from './canvasCrash.tsx';
 import type { RemotePlayerRecord } from '../game/types.ts';
 
@@ -49,11 +52,16 @@ function GameRuntime() {
 
 function RendererSetup() {
     const { gl } = useThree();
+    const qualityPreset = useGameStore((state) => state.qualityPreset);
+    const settings = getQualitySettings(qualityPreset);
 
     useEffect(() => {
         gl.shadowMap.enabled = true;
         gl.shadowMap.type = THREE.PCFSoftShadowMap;
-    }, [gl]);
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = settings.exposure;
+        gl.outputColorSpace = THREE.SRGBColorSpace;
+    }, [gl, settings.exposure]);
 
     return null;
 }
@@ -61,6 +69,8 @@ function RendererSetup() {
 function GameScene() {
     const { registerPlayerParts, remotePlayersRef } = useGame();
     const remotePlayerIds = useGameStore((state) => state.remotePlayerIds);
+    const setUiPreference = useGameStore((state) => state.setUiPreference);
+    const qualityPreset = useGameStore((state) => state.qualityPreset);
     const onPlayerReady = useCallback((parts: Parameters<typeof registerPlayerParts>[0]) => {
         registerPlayerParts(parts);
     }, [registerPlayerParts]);
@@ -73,7 +83,14 @@ function GameScene() {
     );
 
     return (
-        <>
+        <PerformanceMonitor
+            bounds={() => [45, 60]}
+            flipflops={3}
+            onDecline={() => {
+                if (qualityPreset === 'high') setUiPreference('qualityPreset', 'medium');
+                else if (qualityPreset === 'medium') setUiPreference('qualityPreset', 'low');
+            }}
+        >
             <RendererSetup />
             <WorldEnvironment />
             <Player onReady={onPlayerReady} />
@@ -81,12 +98,15 @@ function GameScene() {
             <RemotePlayers records={remoteRecords} />
             <GameRuntime />
             <CameraRig />
-        </>
+            <PostProcessing />
+        </PerformanceMonitor>
     );
 }
 
 function GameHost({ onCrash }: { onCrash: (error: unknown) => void }) {
     const { camera: cameraDefaults } = worldConfig;
+    const qualityPreset = useGameStore((state) => state.qualityPreset);
+    const settings = getQualitySettings(qualityPreset);
 
     return (
         <Canvas
@@ -96,7 +116,7 @@ function GameHost({ onCrash }: { onCrash: (error: unknown) => void }) {
                 far: cameraDefaults.far,
             }}
             gl={{ antialias: true, powerPreference: 'high-performance' }}
-            dpr={[1, 2]}
+            dpr={settings.dpr}
             shadows
         >
             <CanvasCrashReporter onCrash={onCrash}>

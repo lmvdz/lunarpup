@@ -46,12 +46,19 @@ function fractalNoise(x: number, z: number) {
     return total / norm;
 }
 
-export function calculateTerrainHeight(x: number, z: number) {
-    let y = fractalNoise(x * 0.0032, z * 0.0032) * 28;
-    y += fractalNoise(x * 0.012 + 50, z * 0.012 - 20) * 9;
+function domainWarp(x: number, z: number) {
+    const warpX = fractalNoise(x * 0.0016 + 17, z * 0.0016 - 9) * 140;
+    const warpZ = fractalNoise(x * 0.0016 - 31, z * 0.0016 + 23) * 140;
+    return { x: x + warpX, z: z + warpZ };
+}
 
-    y += Math.pow(Math.max(0, Math.sin(x * 0.0033 + Math.sin(z * 0.0025) * 2.2)), 2.15) * 64;
-    y += Math.pow(Math.max(0, Math.cos((x + z) * 0.0028)), 2.8) * 38;
+export function calculateTerrainHeight(x: number, z: number) {
+    const warped = domainWarp(x, z);
+    let y = fractalNoise(warped.x * 0.0032, warped.z * 0.0032) * 28;
+    y += fractalNoise(warped.x * 0.012 + 50, warped.z * 0.012 - 20) * 9;
+
+    y += Math.pow(Math.max(0, Math.sin(warped.x * 0.0033 + Math.sin(warped.z * 0.0025) * 2.2)), 2.15) * 64;
+    y += Math.pow(Math.max(0, Math.cos((warped.x + warped.z) * 0.0028)), 2.8) * 38;
 
     const cell = 720;
     const baseCx = Math.floor(x / cell);
@@ -84,17 +91,20 @@ export function calculateTerrainHeight(x: number, z: number) {
             const cx = (gx + 0.18 + hash2(gx + 5, gz + 6) * 0.64) * craterCell;
             const cz = (gz + 0.18 + hash2(gx - 8, gz + 3) * 0.64) * craterCell;
             const radius = 105 + hash2(gx + 22, gz + 22) * 105;
-            const depth = 32 + hash2(gx - 44, gz + 11) * 46;
-            const rimHeight = 8 + hash2(gx + 14, gz - 14) * 12;
+            const depth = 36 + hash2(gx - 44, gz + 11) * 52;
+            const rimHeight = 10 + hash2(gx + 14, gz - 14) * 14;
             const dx = x - cx;
             const dz = z - cz;
             const dist = Math.sqrt(dx * dx + dz * dz);
             if (dist < radius * 1.18) {
                 const t = dist / radius;
                 if (t < 1) {
-                    const bowl = -depth * Math.pow(1 - t * t, 1.28);
-                    const rim = Math.exp(-Math.pow((t - 0.9) * 6.2, 2)) * rimHeight;
-                    y += bowl + rim;
+                    const bowl = -depth * Math.pow(1 - t * t, 1.55);
+                    const rim = Math.exp(-Math.pow((t - 0.92) * 7.4, 2)) * rimHeight;
+                    const peak = hash2(gx + 77, gz - 33) > 0.82
+                        ? (8 + hash2(gx - 3, gz + 19) * 16) * Math.exp(-Math.pow(t - 0.18, 2) * 18)
+                        : 0;
+                    y += bowl + rim + peak;
                 } else {
                     const outer = Math.max(0, 1 - (t - 1) / 0.18);
                     y += outer * rimHeight * 0.35;

@@ -89,7 +89,7 @@ export function createGameRuntime(): GameRuntime {
         trickState: createTrickSimulation(),
         frameHud: {},
         multiplayerClient: null,
-        renderedChunkCount: 0,
+        renderedTerrainRings: 0,
     };
 }
 

@@ -7,6 +7,7 @@ export function SettingsPanel() {
         showControls,
         showTuning,
         reducedMotion,
+        qualityPreset,
         setUiPreference,
     } = useGameStore();
 
@@ -18,6 +19,20 @@ export function SettingsPanel() {
         <aside id="settings-panel" className="settings-panel" aria-label="Game settings">
             <h2 id={`${panelId}-title`}>Settings</h2>
             <ul id={panelId} className="settings-list" aria-labelledby={`${panelId}-title`}>
+                <li>
+                    <label htmlFor="setting-quality-preset">
+                        Graphics quality
+                        <select
+                            id="setting-quality-preset"
+                            value={qualityPreset}
+                            onChange={(event) => setUiPreference('qualityPreset', event.target.value as typeof qualityPreset)}
+                        >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </label>
+                </li>
                 <li>
                     <label htmlFor="setting-show-controls">
                         <input

@@ -321,7 +321,7 @@ function handlePhysics(runtime: GameRuntime, dt: number): { groundSpeed: number;
 
     const speedRatio = getSpeedRatio(physics, displaySpeed);
     frameHud.setSpeedText?.(
-        `${(Math.abs(displaySpeed) * 80).toFixed(1)} U/S${isBoosting ? '  BOOST' : ''}  | chunks ${runtime.renderedChunkCount}`,
+        `${(Math.abs(displaySpeed) * 80).toFixed(1)} U/S${isBoosting ? '  BOOST' : ''}  | rings ${runtime.renderedTerrainRings}`,
     );
     frameHud.updateSpeedLines?.(speedRatio, isBoosting);
     frameHud.redrawMinimap?.();

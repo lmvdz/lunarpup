@@ -1,8 +1,6 @@
 export {
-    chunkSize,
     groundClearance,
     hoverClearance,
-    terrainViewDistance,
 } from './content/worldConfig.ts';
 
 export const tuningSettings = [

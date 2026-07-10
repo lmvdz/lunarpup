@@ -11,14 +11,15 @@ export type TerrainSurfaceSpec = {
 export const worldConfig = {
     environment: {
         background: '#020208',
-        fog: { color: '#020208', density: 0.0018 },
+        fog: { color: '#08081a', density: 0.0012 },
         stars: { count: 1000, radius: 600, size: 0.8, color: '#ffffff' },
-        ambientLight: { color: '#222233', intensity: 1.5 },
+        ambientLight: { color: '#4a5070', intensity: 2.8 },
         directionalLight: {
-            color: '#ddddff',
-            intensity: 1.8,
+            color: '#fff8f0',
+            intensity: 3.2,
             position: [100, 150, 50] as [number, number, number],
             shadowMapSize: 1024,
+            shadowBias: -0.0002,
             shadowCamera: {
                 near: 0.5,
                 far: 500,
@@ -28,29 +29,34 @@ export const worldConfig = {
                 bottom: -250,
             },
         },
+        rendering: {
+            toneMappingExposure: 1.35,
+        },
         planet: {
-            position: [-420, 220, -520] as [number, number, number],
-            radius: 15,
-            segments: 16,
-            color: '#223388',
-            emissive: '#111133',
+            /** Offset from the player — Earth hanging on the lunar horizon. */
+            position: [-420, 260, -680] as [number, number, number],
+            radius: 52,
+            segments: 32,
+            color: '#5b8fd9',
+            emissive: '#2a4f8c',
         },
     },
     terrain: {
-        chunkSize: 240,
-        viewDistance: 3,
-        viewDistancePadding: 0.35,
+        nanite: {
+            enabled: true,
+            gpuDisplacement: false,
+        },
+        clipmap: {
+            levels: 6,
+            gridSize: 33,
+            baseCellSize: 8,
+        },
         hoverClearance: 0.42,
         normalSampleDelta: 2.8,
-        lod: [
-            { name: 'near' as const, maxDistance: 1.25, segments: 56 },
-            { name: 'mid' as const, maxDistance: 2.25, segments: 28 },
-            { name: 'far' as const, maxDistance: Number.POSITIVE_INFINITY, segments: 12 },
-        ],
         surfaces: {
-            near: { materialId: 'lunar', color: 0x7d8490, roughness: 0.95, metalness: 0.05, flatShading: false },
-            mid: { materialId: 'lunar', color: 0x737b86, roughness: 0.95, metalness: 0.05, flatShading: false },
-            far: { materialId: 'lunar', color: 0x666e78, roughness: 0.95, metalness: 0.05, flatShading: false },
+            near: { materialId: 'lunar', color: 0xb8c0cc, roughness: 0.88, metalness: 0.04, flatShading: false },
+            mid: { materialId: 'lunar', color: 0xa8b0bc, roughness: 0.9, metalness: 0.04, flatShading: false },
+            far: { materialId: 'lunar', color: 0x98a0ac, roughness: 0.92, metalness: 0.03, flatShading: false },
         } satisfies Record<TerrainLodName, TerrainSurfaceSpec>,
     },
     camera: {
@@ -71,19 +77,8 @@ export const worldConfig = {
     },
 } as const;
 
-export const chunkSize = worldConfig.terrain.chunkSize;
-export const terrainViewDistance = worldConfig.terrain.viewDistance;
 export const hoverClearance = worldConfig.terrain.hoverClearance;
 
 /** @deprecated Use hoverClearance */
 export const groundClearance = hoverClearance;
 
-export function getTerrainLod(distanceInChunks: number): Pick<{ lodName: TerrainLodName; segments: number }, 'lodName' | 'segments'> {
-    for (const lod of worldConfig.terrain.lod) {
-        if (distanceInChunks <= lod.maxDistance) {
-            return { lodName: lod.name, segments: lod.segments };
-        }
-    }
-    const far = worldConfig.terrain.lod[worldConfig.terrain.lod.length - 1]!;
-    return { lodName: far.name, segments: far.segments };
-}

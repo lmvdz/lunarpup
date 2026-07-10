@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { QualityPreset } from '../content/qualityConfig.ts';
 import type { MultiplayerStatus } from '../net/client.ts';
 import type { MultiplayerConfig } from '../net/protocol.ts';
 
@@ -13,6 +14,7 @@ type UiPreferences = {
     showControls: boolean;
     showTuning: boolean;
     reducedMotion: boolean;
+    qualityPreset: QualityPreset;
 };
 
 type SessionState = {
@@ -56,6 +58,7 @@ export const useGameStore = create<GameStore>()(
             showControls: true,
             showTuning: false,
             reducedMotion: false,
+            qualityPreset: 'medium',
             ...initialSession(),
             setUiPreference: (key, value) => set({ [key]: value }),
             setRemotePlayerIds: (ids) => set({ remotePlayerIds: ids }),
@@ -78,6 +81,7 @@ export const useGameStore = create<GameStore>()(
                 showControls: state.showControls,
                 showTuning: state.showTuning,
                 reducedMotion: state.reducedMotion,
+                qualityPreset: state.qualityPreset,
             }),
         },
     ),

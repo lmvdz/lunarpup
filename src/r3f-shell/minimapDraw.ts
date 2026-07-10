@@ -34,7 +34,66 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, frame: MinimapFrame) 
 
     ctx.clearRect(0, 0, SIZE, SIZE);
     drawTerrain(ctx, heightCache!);
+    drawContours(ctx, heightCache!);
     drawMarkers(ctx, frame);
+    drawNorthIndicator(ctx);
+}
+
+function drawContours(ctx: CanvasRenderingContext2D, heights: Float32Array) {
+    const cell = SIZE / GRID;
+    const levels = [0.2, 0.35, 0.5, 0.65, 0.8];
+
+    ctx.strokeStyle = 'rgba(200, 208, 220, 0.18)';
+    ctx.lineWidth = 1;
+
+    for (const level of levels) {
+        for (let z = 0; z < GRID - 1; z++) {
+            for (let x = 0; x < GRID - 1; x++) {
+                const tl = heights[z * GRID + x]!;
+                const tr = heights[z * GRID + x + 1]!;
+                const bl = heights[(z + 1) * GRID + x]!;
+                const br = heights[(z + 1) * GRID + x + 1]!;
+                const edges = [
+                    [tl, tr, x * cell, z * cell, (x + 1) * cell, z * cell],
+                    [tr, br, (x + 1) * cell, z * cell, (x + 1) * cell, (z + 1) * cell],
+                    [br, bl, (x + 1) * cell, (z + 1) * cell, x * cell, (z + 1) * cell],
+                    [bl, tl, x * cell, (z + 1) * cell, x * cell, z * cell],
+                ] as const;
+
+                for (const [a, b, x1, y1, x2, y2] of edges) {
+                    const crosses = (a < level && b >= level) || (b < level && a >= level);
+                    if (!crosses) continue;
+                    const t = (level - a) / (b - a || 1);
+                    const px = x1 + (x2 - x1) * t;
+                    const py = y1 + (y2 - y1) * t;
+                    ctx.fillStyle = 'rgba(200, 208, 220, 0.35)';
+                    ctx.fillRect(px - 0.5, py - 0.5, 1, 1);
+                }
+            }
+        }
+    }
+}
+
+function drawNorthIndicator(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.translate(SIZE - 14, 14);
+    ctx.strokeStyle = 'rgba(200, 208, 220, 0.7)';
+    ctx.fillStyle = 'rgba(200, 208, 220, 0.85)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, 6);
+    ctx.lineTo(0, -8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -8);
+    ctx.lineTo(-4, -1);
+    ctx.lineTo(4, -1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', 0, 12);
+    ctx.restore();
 }
 
 function sampleHeights(cx: number, cz: number) {
