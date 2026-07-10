@@ -74,6 +74,38 @@ counterpart ↔ disposition), converge in a dedicated worktree branch, land via
 PR, keep every ported unit behind the verification gate. Do not delete our
 server code while any open concern still needs it.
 
+## Evidence: UI/UX ethos port difficulty (assessed 2026-07-10)
+
+Upstream `dev` = `main` = `97f75bb`. Its whole UI surface is ~590 lines
+(App 74, Hud 84, LunarMap 212, styles.css 218): one always-on fixed HUD at a
+single z-level, no menus, no pause, no navigation, no focus management, no
+reduced-motion, six ad-hoc CSS variables whose names (`--ink`, `--muted`,
+`--accent`, `--panel`, `--line`) are a subset of our token vocabulary, and a
+Space Grotesk / IBM Plex Mono type pairing that is arguably better than our
+Segoe stack. React already owns every pixel — there are no imperative
+listeners to unwind, which was the hardest part of concern 14.
+
+Port buckets:
+- **Drop-in (pure, tested, zero coupling):** `src/ui/tokens.css` (merge, keep
+  their fonts), `experienceState.ts` reducer + 10 tests, `motion.ts`,
+  `menuState.ts`, `controlsLegendState.ts`, `toast.ts` + `ToastHost`,
+  `docs/product-quality-budgets.md` verbatim. ~1 focused day.
+- **Adapt:** `ExperienceProvider` needs upstream equivalents for its two game
+  hooks (`pauseController`, `setMenuOrbit`); main/pause/Settings/Controls
+  surfaces rebuilt on the ported reducer in upstream's HUD idiom; HUD-only
+  play means their permanent room-join panel becomes a focused "play
+  together" view and the brand header becomes menu-only; add the explicit
+  layer contract while the surface is still one stratum. ~2–3 days.
+- **Re-spec, don't port:** the Playwright assertion list (navigation matrix,
+  elementsFromPoint layer checks, focus trap/restore, lifecycle balance, zero
+  console errors) rewritten against the new DOM — it IS the executable ethos.
+- **Stays behind:** GameProvider, gamemode/cosmetics/lootbox/chat/tuning
+  views — their systems don't exist upstream. Presence/roster re-maps cheaply
+  onto Trystero's `peerCount`/`selfId`.
+
+Net: the ethos ports in roughly a week of bounded PRs, and small early PRs on
+their fresh base are the shape most likely to survive the reset pattern.
+
 ## Verify
 
 - A written disposition for every `src/game/` file in `97f75bb` and every
