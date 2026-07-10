@@ -1,6 +1,6 @@
-import { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { handleKeys } from '../game/input.ts';
 import { stepSimulation } from '../game/simulation.ts';
@@ -12,6 +12,7 @@ import { Player } from './Player.tsx';
 import { RemotePlayers } from './RemotePlayers.tsx';
 import { Terrain } from './Terrain.tsx';
 import { WorldEnvironment } from './WorldEnvironment.tsx';
+import { CanvasCrashReporter, CrashScreen, useSafeFrame } from './canvasCrash.tsx';
 import type { VoxelDogParts } from '../game/types.ts';
 
 function useGameInput() {
@@ -33,7 +34,7 @@ function useGameInput() {
 function GameRuntime() {
     const { runtime, ready, remotePlayersRef } = useGame();
 
-    useFrame((_, delta) => {
+    useSafeFrame((_, delta) => {
         if (!ready.current) return;
         const dt = Math.min(delta, 0.05);
         lerpRemotePlayers(remotePlayersRef.current, dt);
@@ -84,7 +85,7 @@ function GameScene() {
     );
 }
 
-function GameHost() {
+function GameHost({ onCrash }: { onCrash: (error: unknown) => void }) {
     return (
         <Canvas
             camera={{ fov: 60, near: 0.1, far: 2500 }}
@@ -92,42 +93,52 @@ function GameHost() {
             dpr={[1, 2]}
             shadows
         >
-            <GameScene />
+            <CanvasCrashReporter onCrash={onCrash}>
+                <GameScene />
+            </CanvasCrashReporter>
         </Canvas>
     );
 }
 
-function WebGLFallback({ error }: { error?: unknown }) {
-    return (
-        <section className="r3f-fallback" role="alert">
-            <h2>Moon needs WebGL</h2>
-            <p>Enable hardware acceleration or update browser/GPU drivers, then reload.</p>
-            {error instanceof Error && <p className="r3f-fallback-detail">{error.message}</p>}
-            <button type="button" onClick={() => window.location.reload()}>Reload game</button>
-        </section>
-    );
-}
-
-type CanvasBoundaryProps = { children: ReactNode };
-type CanvasBoundaryState = { error: unknown | null };
+type CanvasBoundaryProps = {
+    children: ReactNode;
+    onCrash: (error: unknown) => void;
+};
+type CanvasBoundaryState = { hasError: boolean };
 
 class CanvasErrorBoundary extends Component<CanvasBoundaryProps, CanvasBoundaryState> {
-    override state: CanvasBoundaryState = { error: null };
+    override state: CanvasBoundaryState = { hasError: false };
 
-    static getDerivedStateFromError(error: unknown): CanvasBoundaryState {
-        return { error };
+    static getDerivedStateFromError(): CanvasBoundaryState {
+        return { hasError: true };
     }
 
     override componentDidCatch(error: Error, info: ErrorInfo) {
         console.error('R3F canvas crashed', error, info.componentStack);
+        this.props.onCrash(error);
     }
 
     override render() {
-        if (this.state.error) return <WebGLFallback error={this.state.error} />;
+        if (this.state.hasError) return null;
         return this.props.children;
     }
 }
 
 export function GameCanvas() {
-    return <CanvasErrorBoundary><GameHost /></CanvasErrorBoundary>;
+    const [crash, setCrash] = useState<unknown>(null);
+
+    if (crash) {
+        return (
+            <CrashScreen
+                error={crash}
+                title="Game crashed"
+            />
+        );
+    }
+
+    return (
+        <CanvasErrorBoundary onCrash={setCrash}>
+            <GameHost onCrash={setCrash} />
+        </CanvasErrorBoundary>
+    );
 }

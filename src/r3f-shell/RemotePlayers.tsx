@@ -1,9 +1,9 @@
 import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { RemotePlayerRecord } from '../game/types.ts';
 import { deckColorFromDog } from '../game/dogTint.ts';
 import { VoxelDogModel, type VoxelDogModelHandle } from './VoxelDogModel.tsx';
+import { useSafeFrame } from './canvasCrash.tsx';
 
 function animateRemoteHoverPads(
     skateboard: THREE.Group,
@@ -29,7 +29,7 @@ function animateRemoteHoverPads(
 function RemotePlayer({ record }: { record: RemotePlayerRecord }) {
     const modelRef = useRef<VoxelDogModelHandle>(null);
 
-    useFrame((_, dt) => {
+    useSafeFrame((_, dt) => {
         const model = modelRef.current;
         if (!model) return;
 

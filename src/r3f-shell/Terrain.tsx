@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useSafeFrame } from './canvasCrash.tsx';
 import * as THREE from 'three';
 import { chunkSize } from '../config.ts';
 import {
@@ -51,7 +51,7 @@ export function Terrain({ player }: { player: VoxelDogParts }) {
         setR3FTerrainChunkCount(chunks.length);
     }, [chunks.length]);
 
-    useFrame(() => {
+    useSafeFrame(() => {
         const root = player.playerGroup ?? player.group;
         const cx = Math.round(root.position.x / chunkSize);
         const cz = Math.round(root.position.z / chunkSize);
