@@ -1,6 +1,9 @@
 import * as THREE from 'three';
+import { worldConfig } from '../content/worldConfig.ts';
 import { createTrickSimulation } from './trickSimulation.ts';
 import type { GameRuntime } from './types.ts';
+
+const { camera: cameraDefaults } = worldConfig;
 
 export function createGameRuntime(): GameRuntime {
     return {
@@ -42,23 +45,23 @@ export function createGameRuntime(): GameRuntime {
             airSteerGrip: 0.012,
             airHoverAssist: 0.55,
             hoverLandingSpeed: 0.28,
-            cameraBaseFov: 60,
-            cameraMaxFov: 84,
+            cameraBaseFov: cameraDefaults.baseFov,
+            cameraMaxFov: cameraDefaults.maxFov,
             heading: 0,
             velocity: new THREE.Vector3(),
             isGrounded: true,
             airTime: 0,
         },
         cameraControl: {
-            yaw: Math.PI,
-            pitch: 0.38,
-            distance: 14,
-            minDistance: 5,
-            maxDistance: 42,
-            sensitivity: 0.006,
-            zoomSensitivity: 0.0015,
-            autoFollowStrength: 0.025,
-            fovSmoothing: 0.08,
+            yaw: cameraDefaults.initialYaw,
+            pitch: cameraDefaults.initialPitch,
+            distance: cameraDefaults.initialDistance,
+            minDistance: cameraDefaults.minDistance,
+            maxDistance: cameraDefaults.maxDistance,
+            sensitivity: cameraDefaults.sensitivity,
+            zoomSensitivity: cameraDefaults.zoomSensitivity,
+            autoFollowStrength: cameraDefaults.autoFollowStrength,
+            fovSmoothing: cameraDefaults.fovSmoothing,
             isDragging: false,
             lastX: 0,
             lastY: 0,
@@ -86,6 +89,7 @@ export function createGameRuntime(): GameRuntime {
         trickState: createTrickSimulation(),
         frameHud: {},
         multiplayerClient: null,
+        renderedChunkCount: 0,
     };
 }
 

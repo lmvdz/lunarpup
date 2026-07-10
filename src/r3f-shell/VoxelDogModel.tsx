@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import type { Ref } from 'react';
 import * as THREE from 'three';
+import type { resolveLoadout } from '../content/catalog.ts';
 
 export type VoxelDogModelHandle = {
     group: THREE.Group;
@@ -10,9 +11,11 @@ export type VoxelDogModelHandle = {
     tail: THREE.Mesh;
 };
 
+type ResolvedLoadout = ReturnType<typeof resolveLoadout>;
+
 type VoxelDogModelProps = {
+    loadout: ResolvedLoadout;
     dogColor: number;
-    deckColor?: number;
 };
 
 const HOVER_PAD_POSITIONS: Array<[number, number, number, number]> = [
@@ -27,9 +30,12 @@ const LEG_POSITIONS: Array<[number, number, number]> = [
 ];
 
 export const VoxelDogModel = forwardRef(function VoxelDogModel(
-    { dogColor, deckColor = 0xff5555 }: VoxelDogModelProps,
+    { loadout, dogColor }: VoxelDogModelProps,
     ref: Ref<VoxelDogModelHandle>,
 ) {
+    const { animal, skateboard: boardDef } = loadout;
+    const deckColor = boardDef.deckColor;
+    const [boardX, boardY, boardZ] = boardDef.deckOffset;
     const playerGroup = useRef<THREE.Group>(null!);
     const group = useRef<THREE.Group>(null!);
     const skateboard = useRef<THREE.Group>(null!);
@@ -47,9 +53,9 @@ export const VoxelDogModel = forwardRef(function VoxelDogModel(
     }), []);
 
     return (
-        <group ref={playerGroup}>
+        <group ref={playerGroup} scale={animal.scale}>
             <group ref={group}>
-                <group ref={skateboard}>
+                <group ref={skateboard} position={[boardX, boardY, boardZ]}>
                     <mesh position={[0, 0.3, 0]} castShadow>
                         <boxGeometry args={[1.6, 0.15, 3.8]} />
                         <meshStandardMaterial color={deckColor} roughness={0.45} metalness={0.15} />

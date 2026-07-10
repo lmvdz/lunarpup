@@ -17,5 +17,5 @@ export function SpeedHud() {
         };
     }, [runtime]);
 
-    return <div id="speedometer" ref={ref}>0.0 U/S  | chunks 0</div>;
+    return <div id="speedometer" ref={ref} role="status" aria-label="Speed and terrain info">0.0 U/S  | chunks 0</div>;
 }

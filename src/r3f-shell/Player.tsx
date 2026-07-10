@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { PLAYER_COLORS } from '../net/protocol.ts';
+import { resolveLoadout } from '../content/catalog.ts';
 import type { VoxelDogParts } from '../game/types.ts';
 import { VoxelDogModel, type VoxelDogModelHandle } from './VoxelDogModel.tsx';
 
@@ -9,6 +10,7 @@ type PlayerProps = {
 
 export function Player({ onReady }: PlayerProps) {
     const modelRef = useRef<VoxelDogModelHandle>(null);
+    const loadout = resolveLoadout();
 
     useLayoutEffect(() => {
         const model = modelRef.current;
@@ -23,5 +25,11 @@ export function Player({ onReady }: PlayerProps) {
         });
     }, [onReady]);
 
-    return <VoxelDogModel ref={modelRef} dogColor={PLAYER_COLORS[0]!} />;
+    return (
+        <VoxelDogModel
+            ref={modelRef}
+            loadout={loadout}
+            dogColor={PLAYER_COLORS[0]!}
+        />
+    );
 }

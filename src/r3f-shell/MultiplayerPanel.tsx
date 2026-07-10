@@ -1,4 +1,4 @@
-import { useGame } from './GameProvider.tsx';
+import { useGameStore } from './gameStore.ts';
 
 const STATUS_LABELS = {
     disconnected: 'Offline',
@@ -8,7 +8,7 @@ const STATUS_LABELS = {
 } as const;
 
 export function MultiplayerPanel() {
-    const { mpStatus, mpStatusDetail, mpRoom, mpPlayers, mpHint } = useGame();
+    const { mpStatus, mpStatusDetail, mpRoom, mpPlayers, mpHint } = useGameStore();
 
     const statusText = mpStatus === 'error' && mpStatusDetail
         ? mpStatusDetail

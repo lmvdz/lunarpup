@@ -2,8 +2,11 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 import type { RemotePlayerRecord } from '../game/types.ts';
 import { deckColorFromDog } from '../game/dogTint.ts';
+import { resolveLoadout } from '../content/catalog.ts';
 import { VoxelDogModel, type VoxelDogModelHandle } from './VoxelDogModel.tsx';
 import { useSafeFrame } from './canvasCrash.tsx';
+
+const remoteLoadout = resolveLoadout();
 
 function animateRemoteHoverPads(
     skateboard: THREE.Group,
@@ -50,8 +53,14 @@ function RemotePlayer({ record }: { record: RemotePlayerRecord }) {
     return (
         <VoxelDogModel
             ref={modelRef}
+            loadout={{
+                ...remoteLoadout,
+                skateboard: {
+                    ...remoteLoadout.skateboard,
+                    deckColor: deckColorFromDog(record.color),
+                },
+            }}
             dogColor={record.color}
-            deckColor={deckColorFromDog(record.color)}
         />
     );
 }

@@ -21,6 +21,7 @@ export const skateboards: Record<string, SkateboardDefinition> = {
         displayName: 'Classic Hoverboard',
         wheelRadius: 0.12,
         deckOffset: [0, 0, 0],
+        deckColor: 0xff5555,
     },
 };
 

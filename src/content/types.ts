@@ -17,6 +17,7 @@ export interface SkateboardDefinition {
     modelUrl?: string;
     wheelRadius: number;
     deckOffset: Vector3Tuple;
+    deckColor: number;
 }
 
 export interface MaterialDefinition {

@@ -2,18 +2,19 @@ import { Component, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { worldConfig } from '../content/worldConfig.ts';
 import { handleKeys } from '../game/input.ts';
 import { stepSimulation } from '../game/simulation.ts';
 import { lerpRemotePlayers } from '../game/remotePlayerMotion.ts';
-import { setupCameraControls, updateCamera } from '../game/camera.ts';
 import { useGame } from './GameProvider.tsx';
+import { useGameStore } from './gameStore.ts';
 import { CameraRig } from './CameraRig.tsx';
 import { Player } from './Player.tsx';
 import { RemotePlayers } from './RemotePlayers.tsx';
 import { Terrain } from './Terrain.tsx';
 import { WorldEnvironment } from './WorldEnvironment.tsx';
 import { CanvasCrashReporter, CrashScreen, useSafeFrame } from './canvasCrash.tsx';
-import type { VoxelDogParts } from '../game/types.ts';
+import type { RemotePlayerRecord } from '../game/types.ts';
 
 function useGameInput() {
     const { runtime } = useGame();
@@ -58,17 +59,16 @@ function RendererSetup() {
 }
 
 function GameScene() {
-    const { registerPlayerParts, remotePlayersRef, remotePlayerIds } = useGame();
-    const [player, setPlayer] = useState<VoxelDogParts | null>(null);
-    const onPlayerReady = useCallback((parts: VoxelDogParts) => {
+    const { registerPlayerParts, remotePlayersRef } = useGame();
+    const remotePlayerIds = useGameStore((state) => state.remotePlayerIds);
+    const onPlayerReady = useCallback((parts: Parameters<typeof registerPlayerParts>[0]) => {
         registerPlayerParts(parts);
-        setPlayer(parts);
     }, [registerPlayerParts]);
 
     const remoteRecords = useMemo(
         () => remotePlayerIds
             .map((id) => remotePlayersRef.current.get(id))
-            .filter((record): record is NonNullable<typeof record> => !!record),
+            .filter((record): record is RemotePlayerRecord => !!record),
         [remotePlayerIds, remotePlayersRef],
     );
 
@@ -77,18 +77,24 @@ function GameScene() {
             <RendererSetup />
             <WorldEnvironment />
             <Player onReady={onPlayerReady} />
-            {player && <Terrain player={player} />}
+            <Terrain />
             <RemotePlayers records={remoteRecords} />
-            {player && <GameRuntime />}
+            <GameRuntime />
             <CameraRig />
         </>
     );
 }
 
 function GameHost({ onCrash }: { onCrash: (error: unknown) => void }) {
+    const { camera: cameraDefaults } = worldConfig;
+
     return (
         <Canvas
-            camera={{ fov: 60, near: 0.1, far: 2500 }}
+            camera={{
+                fov: cameraDefaults.fov,
+                near: cameraDefaults.near,
+                far: cameraDefaults.far,
+            }}
             gl={{ antialias: true, powerPreference: 'high-performance' }}
             dpr={[1, 2]}
             shadows

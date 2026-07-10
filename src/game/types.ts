@@ -123,4 +123,5 @@ export interface GameRuntime {
     trickState: TrickSimulationState;
     frameHud: FrameHudCallbacks;
     multiplayerClient: MultiplayerClient | null;
+    renderedChunkCount: number;
 }

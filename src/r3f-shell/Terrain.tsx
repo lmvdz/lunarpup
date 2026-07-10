@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeFrame } from './canvasCrash.tsx';
 import * as THREE from 'three';
-import { chunkSize } from '../config.ts';
-import {
-    getTerrainChunkPlan,
-    getTerrainHeight,
-    setR3FTerrainChunkCount,
-} from '../game/terrain.ts';
+import { chunkSize, worldConfig } from '../content/worldConfig.ts';
+import { getTerrainChunkPlan, getTerrainHeight } from '../game/terrain.ts';
 import type { TerrainChunkDescriptor } from '../game/terrain.ts';
-import type { VoxelDogParts } from '../game/types.ts';
+import { getPlayerRoot } from '../game/runtime.ts';
+import { useGame } from './GameProvider.tsx';
 
 type TerrainMaterials = Record<TerrainChunkDescriptor['lodName'], THREE.MeshStandardMaterial>;
 
@@ -34,32 +31,45 @@ function TerrainChunk({ chunk, material }: { chunk: TerrainChunkDescriptor; mate
     return <mesh geometry={geometry} material={material} position={[chunk.cx * chunkSize, 0, chunk.cz * chunkSize]} receiveShadow dispose={null} />;
 }
 
-export function Terrain({ player }: { player: VoxelDogParts }) {
+export function Terrain() {
+    const { runtime, ready } = useGame();
     const [chunks, setChunks] = useState<TerrainChunkDescriptor[]>(() => getTerrainChunkPlan(0, 0));
     const currentChunk = useRef('');
     const materials = useMemo<TerrainMaterials>(() => {
-        const near = new THREE.MeshStandardMaterial({ color: 0x7d8490, roughness: 0.95, metalness: 0.05, flatShading: false });
-        const mid = near.clone();
-        mid.color.setHex(0x737b86);
-        const far = near.clone();
-        far.color.setHex(0x666e78);
-        return { near, mid, far };
+        const entries = Object.entries(worldConfig.terrain.surfaces).map(([lodName, surface]) => {
+            const material = new THREE.MeshStandardMaterial({
+                color: surface.color,
+                roughness: surface.roughness,
+                metalness: surface.metalness,
+                flatShading: surface.flatShading,
+            });
+            return [lodName, material] as const;
+        });
+        return Object.fromEntries(entries) as TerrainMaterials;
     }, []);
 
     useEffect(() => () => Object.values(materials).forEach((material) => material.dispose()), [materials]);
-    useEffect(() => {
-        setR3FTerrainChunkCount(chunks.length);
-    }, [chunks.length]);
 
     useSafeFrame(() => {
-        const root = player.playerGroup ?? player.group;
+        if (!ready.current) return;
+
+        const root = getPlayerRoot(runtime.current);
+        if (!root) return;
+
         const cx = Math.round(root.position.x / chunkSize);
         const cz = Math.round(root.position.z / chunkSize);
         const key = `${cx},${cz}`;
         if (key === currentChunk.current) return;
+
         currentChunk.current = key;
-        setChunks(getTerrainChunkPlan(root.position.x, root.position.z));
+        const nextChunks = getTerrainChunkPlan(root.position.x, root.position.z);
+        runtime.current.renderedChunkCount = nextChunks.length;
+        setChunks(nextChunks);
     });
+
+    useEffect(() => {
+        runtime.current.renderedChunkCount = chunks.length;
+    }, [chunks.length, runtime]);
 
     return <group>{chunks.map((chunk) => <TerrainChunk key={chunk.key} chunk={chunk} material={materials[chunk.lodName]} />)}</group>;
 }

@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { PhysicsState } from './types.ts';
-import { chunkSize, terrainViewDistance } from '../config.ts';
+import { chunkSize, getTerrainLod, terrainViewDistance, worldConfig } from '../content/worldConfig.ts';
 import { calculateTerrainHeight } from './terrainMath.ts';
 
 export type TerrainChunkDescriptor = {
@@ -11,38 +11,23 @@ export type TerrainChunkDescriptor = {
     segments: number;
 };
 
-let r3fChunkCount = 0;
-
-export function setR3FTerrainChunkCount(count: number) {
-    r3fChunkCount = count;
-}
-
-export function getRenderedTerrainChunkCount() {
-    return r3fChunkCount;
-}
-
 function chunkKey(cx: number, cz: number) {
     return `${cx},${cz}`;
-}
-
-function getChunkLod(distanceInChunks: number): Pick<TerrainChunkDescriptor, 'lodName' | 'segments'> {
-    if (distanceInChunks <= 1.25) return { lodName: 'near', segments: 56 };
-    if (distanceInChunks <= 2.25) return { lodName: 'mid', segments: 28 };
-    return { lodName: 'far', segments: 12 };
 }
 
 export function getTerrainChunkPlan(x: number, z: number): TerrainChunkDescriptor[] {
     const playerCx = Math.round(x / chunkSize);
     const playerCz = Math.round(z / chunkSize);
     const chunks: TerrainChunkDescriptor[] = [];
+    const padding = worldConfig.terrain.viewDistancePadding;
 
     for (let dz = -terrainViewDistance; dz <= terrainViewDistance; dz++) {
         for (let dx = -terrainViewDistance; dx <= terrainViewDistance; dx++) {
             const dist = Math.sqrt(dx * dx + dz * dz);
-            if (dist > terrainViewDistance + 0.35) continue;
+            if (dist > terrainViewDistance + padding) continue;
             const cx = playerCx + dx;
             const cz = playerCz + dz;
-            chunks.push({ key: chunkKey(cx, cz), cx, cz, ...getChunkLod(dist) });
+            chunks.push({ key: chunkKey(cx, cz), cx, cz, ...getTerrainLod(dist) });
         }
     }
 
@@ -60,7 +45,7 @@ export function getTerrainNormal(
     z: number,
     scratch: { terrainNormal: THREE.Vector3 },
 ) {
-    const d = 2.8;
+    const d = worldConfig.terrain.normalSampleDelta;
     const hL = getTerrainHeight(x - d, z);
     const hR = getTerrainHeight(x + d, z);
     const hD = getTerrainHeight(x, z - d);

@@ -1,22 +1,36 @@
-import { GameProvider, useGame } from './GameProvider.tsx';
+import { GameProvider } from './GameProvider.tsx';
 import { ChatPanel } from './ChatPanel.tsx';
+import { ControlsPanel } from './ControlsPanel.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import { MinimapPanel } from './MinimapPanel.tsx';
 import { MultiplayerPanel } from './MultiplayerPanel.tsx';
+import { SettingsPanel } from './SettingsPanel.tsx';
 import { TrickHud } from './TrickHud.tsx';
 import { TuningPanel } from './TuningPanel.tsx';
 import { SpeedHud } from './SpeedHud.tsx';
 import { SpeedLines } from './SpeedLines.tsx';
 import { UpdateNotice } from './UpdateNotice.tsx';
+import { useGameStore } from './gameStore.ts';
 import '../styles.css';
 import './shell.css';
 
-function ChatPanelWrapper() {
-    const { multiplayerConfig } = useGame();
+function HudPanels() {
+    const showTuning = useGameStore((state) => state.showTuning);
+    const multiplayerConfig = useGameStore((state) => state.multiplayerConfig);
+
     return (
-        <ChatPanel
-            multiplayerEnabled={multiplayerConfig?.enabled ?? false}
-        />
+        <>
+            <SettingsPanel />
+            <ControlsPanel />
+            {showTuning && <TuningPanel />}
+            <TrickHud />
+            <MinimapPanel />
+            <MultiplayerPanel />
+            <ChatPanel multiplayerEnabled={multiplayerConfig?.enabled ?? false} />
+            <SpeedHud />
+            <SpeedLines />
+            <UpdateNotice />
+        </>
     );
 }
 
@@ -30,25 +44,8 @@ export function App() {
                 <div id="hud-layer" className="r3f-hud-layer">
                     <div id="ui">
                         <h1>🌙 Lunar Pup Hover</h1>
-                        <div className="controls">
-                            <span className="key">▲</span> / <span className="key">W</span> Thrust Forward<br />
-                            <span className="key">▼</span> / <span className="key">S</span> Brake / Reverse<br />
-                            <span className="key">◀</span> <span className="key">▶</span> / <span className="key">A</span> <span className="key">D</span> Steer<br />
-                            <span className="key">Spacebar</span> Hover Burst (Jump)<br />
-                            <span className="key">Mid-air</span> Steer + thrust still work in jumps<br />
-                            <span className="key">Shift</span> Boost<br />
-                            <span className="key">Mouse drag</span> Orbit Camera<br />
-                            <span className="key">Wheel</span> Zoom In / Out
-                        </div>
                     </div>
-                    <TuningPanel />
-                    <TrickHud />
-                    <MinimapPanel />
-                    <MultiplayerPanel />
-                    <ChatPanelWrapper />
-                    <SpeedHud />
-                    <SpeedLines />
-                    <UpdateNotice />
+                    <HudPanels />
                 </div>
             </main>
         </GameProvider>

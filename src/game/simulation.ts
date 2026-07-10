@@ -3,7 +3,6 @@ import { hoverClearance } from '../config.ts';
 import {
     getTerrainNormal,
     getHeightAboveTerrain,
-    getRenderedTerrainChunkCount,
     alignPlayerToTerrain,
     alignPlayerHeadingInAir,
     getTerrainHeight,
@@ -322,7 +321,7 @@ function handlePhysics(runtime: GameRuntime, dt: number): { groundSpeed: number;
 
     const speedRatio = getSpeedRatio(physics, displaySpeed);
     frameHud.setSpeedText?.(
-        `${(Math.abs(displaySpeed) * 80).toFixed(1)} U/S${isBoosting ? '  BOOST' : ''}  | chunks ${getRenderedTerrainChunkCount()}`,
+        `${(Math.abs(displaySpeed) * 80).toFixed(1)} U/S${isBoosting ? '  BOOST' : ''}  | chunks ${runtime.renderedChunkCount}`,
     );
     frameHud.updateSpeedLines?.(speedRatio, isBoosting);
     frameHud.redrawMinimap?.();

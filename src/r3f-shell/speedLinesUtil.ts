@@ -27,7 +27,13 @@ export function updateSpeedLines(
     layer: HTMLElement,
     speedRatio: number,
     isBoosting: boolean,
+    reducedMotion = false,
 ) {
+    if (reducedMotion) {
+        layer.style.opacity = '0';
+        return;
+    }
+
     const intensity = THREE.MathUtils.clamp((speedRatio - 0.36) / 0.64, 0, 1);
     layer.style.opacity = (isBoosting ? Math.max(0.45, intensity) : intensity * 0.72).toFixed(3);
 

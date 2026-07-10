@@ -57,7 +57,7 @@ export function TrickHud() {
     }, []);
 
     return (
-        <section id="trick-hud">
+        <section id="trick-hud" aria-label="Trick scoring">
             <div id="trick-score" ref={scoreRef}>SCORE 0</div>
             <div id="trick-current" ref={currentRef} />
             <div id="trick-result" ref={resultRef} role="status" aria-live="polite" aria-atomic="true" />

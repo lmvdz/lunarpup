@@ -1,3 +1,10 @@
+export {
+    chunkSize,
+    groundClearance,
+    hoverClearance,
+    terrainViewDistance,
+} from './content/worldConfig.ts';
+
 export const tuningSettings = [
     { key: 'mass', label: 'Mass', min: 20, max: 200, step: 5 },
     { key: 'thrustForce', label: 'Thrust', min: 0.5, max: 6, step: 0.05 },
@@ -29,10 +36,3 @@ export const tuningSettings = [
 ] as const;
 
 export type PhysicsKey = (typeof tuningSettings)[number]['key'];
-
-export const chunkSize = 240;
-export const terrainViewDistance = 3;
-export const hoverClearance = 0.42;
-
-/** @deprecated Use hoverClearance */
-export const groundClearance = hoverClearance;

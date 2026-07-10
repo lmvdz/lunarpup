@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { createSpeedLines, updateSpeedLines } from './speedLinesUtil.ts';
 import { useGame } from './GameProvider.tsx';
+import { useGameStore } from './gameStore.ts';
 
 export function SpeedLines() {
     const { runtime } = useGame();
+    const reducedMotion = useGameStore((state) => state.reducedMotion);
     const ref = useRef<HTMLDivElement>(null);
     const linesRef = useRef<HTMLDivElement[]>([]);
 
@@ -13,7 +15,7 @@ export function SpeedLines() {
 
         linesRef.current = createSpeedLines(layer);
         runtime.current.frameHud.updateSpeedLines = (speedRatio, isBoosting) => {
-            updateSpeedLines(linesRef.current, layer, speedRatio, isBoosting);
+            updateSpeedLines(linesRef.current, layer, speedRatio, isBoosting, reducedMotion);
         };
 
         return () => {
@@ -21,7 +23,7 @@ export function SpeedLines() {
             linesRef.current = [];
             layer.replaceChildren();
         };
-    }, [runtime]);
+    }, [reducedMotion, runtime]);
 
-    return <div id="speed-lines" ref={ref} />;
+    return <div id="speed-lines" ref={ref} aria-hidden="true" />;
 }

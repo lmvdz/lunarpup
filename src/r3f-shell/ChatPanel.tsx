@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useGame } from './GameProvider.tsx';
+import { useGameStore } from './gameStore.ts';
 
 export function ChatPanel({ multiplayerEnabled }: { multiplayerEnabled: boolean }) {
+    const chatLines = useGameStore((state) => state.chatLines);
     const {
-        chatLines,
         appendChatLine,
         submitChatMessage,
         handleTpCommand,
