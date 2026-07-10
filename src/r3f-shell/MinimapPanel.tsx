@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { drawMinimap, MINIMAP_SIZE, resetMinimapCache } from './minimapDraw.ts';
 import { useGame } from './GameProvider.tsx';
 import { getPlayerRoot } from '../game/runtime.ts';
+import { ACTIVE_GATE_COLOR, getActiveCheckpointTarget } from '../modes/client.ts';
 
 export function MinimapPanel({ expanded = false }: { expanded?: boolean }) {
     const { runtime, remotePlayersRef } = useGame();
@@ -18,11 +19,20 @@ export function MinimapPanel({ expanded = false }: { expanded?: boolean }) {
         runtime.current.frameHud.redrawMinimap = () => {
             const root = getPlayerRoot(runtime.current);
             if (!root) return;
+            const checkpoint = getActiveCheckpointTarget();
 
             drawMinimap(ctx, {
                 playerX: root.position.x,
                 playerZ: root.position.z,
                 markers: [
+                    ...(checkpoint ? [{
+                        x: checkpoint.x,
+                        z: checkpoint.z,
+                        color: ACTIVE_GATE_COLOR,
+                        radius: 6,
+                        shape: 'gate' as const,
+                        connectFromPlayer: true,
+                    }] : []),
                     ...[...remotePlayersRef.current.values()].map((remote) => ({
                         x: remote.current.x,
                         z: remote.current.z,
@@ -53,7 +63,7 @@ export function MinimapPanel({ expanded = false }: { expanded?: boolean }) {
                 className="minimap-canvas"
                 width={MINIMAP_SIZE}
                 height={MINIMAP_SIZE}
-                aria-label="Terrain map with player positions"
+                aria-label="Terrain map with player positions and next gate"
             />
         </section>
     );

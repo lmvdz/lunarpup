@@ -38,6 +38,7 @@ export function GamemodeHud() {
     const lapTotal = useRef<HTMLElement>(null);
     const score = useRef<HTMLElement>(null);
     const time = useRef<HTMLElement>(null);
+    const direction = useRef<HTMLElement>(null);
     const announcement = useRef<HTMLParagraphElement>(null);
 
     useEffect(() => bindGamemodeHud({
@@ -49,6 +50,7 @@ export function GamemodeHud() {
         lapTotal: required(lapTotal),
         score: required(score),
         time: required(time),
+        direction: required(direction),
         announcement: required(announcement),
     }), []);
 
@@ -61,6 +63,7 @@ export function GamemodeHud() {
                     <span className="run-hud-divider" aria-hidden="true" />
                     Lap <strong ref={lap}>1</strong><span aria-hidden="true">/</span><span ref={lapTotal}>2</span>
                 </p>
+                <p className="run-hud-next"><span>Next</span> <strong ref={direction}>↑ 45m</strong></p>
             </div>
             <dl className="run-hud-stats">
                 <div><dt>Time</dt><dd ref={time}>0.00s</dd></div>

@@ -11,6 +11,8 @@ export interface MinimapMarker {
     color: number;
     radius: number;
     pulse?: boolean;
+    shape?: 'dot' | 'gate';
+    connectFromPlayer?: boolean;
 }
 
 export interface MinimapFrame {
@@ -90,8 +92,40 @@ function drawMarkers(ctx: CanvasRenderingContext2D, frame: MinimapFrame) {
     for (const marker of frame.markers) {
         const { x, y } = worldToMap(marker.x, marker.z, frame.playerX, frame.playerZ);
         if (x < -4 || y < -4 || x > SIZE + 4 || y > SIZE + 4) continue;
-        drawDot(ctx, x, y, marker.color, marker.radius, marker.pulse);
+        if (marker.connectFromPlayer) drawGuide(ctx, x, y, marker.color);
+        if (marker.shape === 'gate') drawGate(ctx, x, y, marker.color, marker.radius);
+        else drawDot(ctx, x, y, marker.color, marker.radius, marker.pulse);
     }
+}
+
+function drawGuide(ctx: CanvasRenderingContext2D, x: number, y: number, color: number) {
+    const r = (color >> 16) & 0xff;
+    const g = (color >> 8) & 0xff;
+    const b = color & 0xff;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(SIZE / 2, SIZE / 2);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.72)`;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawGate(ctx: CanvasRenderingContext2D, x: number, y: number, color: number, radius: number) {
+    const r = (color >> 16) & 0xff;
+    const g = (color >> 8) & 0xff;
+    const b = color & 0xff;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(-radius / 2, -radius / 2, radius, radius);
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-radius / 2, -radius / 2, radius, radius);
+    ctx.restore();
 }
 
 function drawDot(

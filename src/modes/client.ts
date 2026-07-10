@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { groundClearance } from '../config.ts';
 import type { GamemodePackageDefinition, PlatformDefinition, RuntimeGamemodeState, ScoreBreakdown } from './runtime.ts';
-import { calculateScoreBreakdown, createGamemode, createRuntimeState, orderedCheckpoints, validateGamemodePackage } from './runtime.ts';
+import { calculateScoreBreakdown, checkpointApproachYaw, createGamemode, createRuntimeState, orderedCheckpoints, validateGamemodePackage } from './runtime.ts';
 import { getActiveRuntime, getRuntimeScene, registerUpdateHook, setCurrentGamemode } from '../game/runtimeRegistry.ts';
 import { getTerrainHeight } from '../game/terrain.ts';
 import { buildLocalSnapshot } from '../game/multiplayer.ts';
 import { getApiBaseUrl, type PlayerSnapshot } from '../net/protocol.ts';
 import { createReplayRunState, reduceReplayRun, type ReplayRunEvent } from './replayRun.ts';
+import { describeGateDirection } from './gateDirection.ts';
 
 interface RunSample {
     t: number;
@@ -25,6 +26,7 @@ export interface GamemodeHudBinding {
     lapTotal: HTMLElement;
     score: HTMLElement;
     time: HTMLElement;
+    direction: HTMLElement;
     announcement: HTMLElement;
 }
 
@@ -76,7 +78,11 @@ let hudBinding: GamemodeHudBinding | null = null;
 let lastRunPackage: GamemodePackageDefinition | null = null;
 let presentation: GamemodePresentation = IDLE_PRESENTATION;
 let replayRun = createReplayRunState();
+let activeCheckpointVisualId: string | null = null;
 const presentationListeners = new Set<() => void>();
+
+export const ACTIVE_GATE_COLOR = 0xffd166;
+const FUTURE_GATE_COLOR = 0x7f9fcf;
 
 export function getGamemodePresentation(): GamemodePresentation {
     return presentation;
@@ -105,6 +111,14 @@ export function getReplayRunEvents(): readonly ReplayRunEvent[] {
     return replayRun.events;
 }
 
+export function getActiveCheckpointTarget(): { x: number; z: number } | null {
+    if (!activeState || !activePackage) return null;
+    const progress = activeState.progress.get('local');
+    if (!progress) return null;
+    const checkpoint = orderedCheckpoints(activePackage.params)[progress.nextCheckpointIndex];
+    return checkpoint ? { x: checkpoint.position.x, z: checkpoint.position.z } : null;
+}
+
 function runtimeParts() {
     const runtime = getActiveRuntime();
     const playerGroup = runtime?.parts?.playerGroup ?? runtime?.parts?.group;
@@ -130,6 +144,8 @@ function startGamemodeAttempt(pkg: GamemodePackageDefinition, replayAlreadyStart
     const snapshot = localPlayerSnapshot();
     const start = activePackage.params.startPosition;
     playerGroup.position.set(start.x, start.y || getTerrainHeight(start.x, start.z) + groundClearance, start.z);
+    physics.heading = checkpointApproachYaw(activePackage.params, 0);
+    runtime.cameraControl.yaw = physics.heading + Math.PI;
     physics.speed = 0;
     physics.velocity.set(0, 0, 0);
     physics.isGrounded = true;
@@ -145,6 +161,8 @@ function startGamemodeAttempt(pkg: GamemodePackageDefinition, replayAlreadyStart
     setCurrentGamemode(gamemode, activeState);
     checkpointRoot = buildGamemodeMeshes(activePackage);
     scene.add(checkpointRoot);
+    activeCheckpointVisualId = null;
+    updateCheckpointVisuals();
     samples = [];
     lastSampleMs = 0;
     resultsVisible = false;
@@ -176,6 +194,7 @@ export function stopGamemode(options: { preserveResults?: boolean } = {}): void 
         });
     }
     checkpointRoot = null;
+    activeCheckpointVisualId = null;
     flushRunSamples('abandon');
     sampleSocket?.close();
     sampleSocket = null;
@@ -231,15 +250,39 @@ function updateGamemode(dt: number): void {
 
 function buildGamemodeMeshes(pkg: GamemodePackageDefinition): THREE.Group {
     const root = new THREE.Group();
-    const gateMaterial = new THREE.MeshBasicMaterial({ color: 0x80ff72, wireframe: true, transparent: true, opacity: 0.7 });
-    const inactiveMaterial = new THREE.MeshBasicMaterial({ color: 0xa0c4ff, wireframe: true, transparent: true, opacity: 0.35 });
-    for (const checkpoint of orderedCheckpoints(pkg.params)) {
+    const checkpoints = orderedCheckpoints(pkg.params);
+    for (const [index, checkpoint] of checkpoints.entries()) {
+        const gate = new THREE.Group();
+        gate.position.set(checkpoint.position.x, checkpoint.position.y, checkpoint.position.z);
+        gate.rotation.y = checkpointApproachYaw(pkg.params, index);
+
         const geometry = new THREE.TorusGeometry(checkpoint.radius, 0.65, 8, 40);
-        const mesh = new THREE.Mesh(geometry, checkpoint.order === 0 ? gateMaterial.clone() : inactiveMaterial.clone());
-        mesh.position.set(checkpoint.position.x, checkpoint.position.y, checkpoint.position.z);
-        mesh.rotation.y = Math.PI / 2;
-        mesh.userData.checkpointId = checkpoint.id;
-        root.add(mesh);
+        const ring = new THREE.Mesh(geometry, checkpointMaterial(FUTURE_GATE_COLOR, 0.2, true));
+        markCheckpointVisual(ring, checkpoint.id, 'ring');
+        gate.add(ring);
+
+        const haloGeometry = new THREE.TorusGeometry(checkpoint.radius + 2.4, 0.24, 6, 40);
+        const halo = new THREE.Mesh(haloGeometry, checkpointMaterial(ACTIVE_GATE_COLOR, 0, false, false));
+        markCheckpointVisual(halo, checkpoint.id, 'halo');
+        halo.visible = false;
+        gate.add(halo);
+
+        const beamGeometry = new THREE.CylinderGeometry(0.18, 0.18, 16, 8);
+        const beam = new THREE.Mesh(beamGeometry, checkpointMaterial(ACTIVE_GATE_COLOR, 0, false, false));
+        beam.position.y = checkpoint.radius + 16;
+        markCheckpointVisual(beam, checkpoint.id, 'marker');
+        beam.visible = false;
+        gate.add(beam);
+
+        const arrowGeometry = new THREE.ConeGeometry(3.2, 6, 12);
+        const arrow = new THREE.Mesh(arrowGeometry, checkpointMaterial(ACTIVE_GATE_COLOR, 0, false, false));
+        arrow.position.y = checkpoint.radius + 6;
+        arrow.rotation.z = Math.PI;
+        markCheckpointVisual(arrow, checkpoint.id, 'marker');
+        arrow.visible = false;
+        gate.add(arrow);
+
+        root.add(gate);
     }
     if (pkg.params.platforms) {
         const material = new THREE.MeshStandardMaterial({ color: 0x6c63ff, roughness: 0.7, metalness: 0.15 });
@@ -255,19 +298,54 @@ function buildGamemodeMeshes(pkg: GamemodePackageDefinition): THREE.Group {
     return root;
 }
 
+type CheckpointVisualRole = 'ring' | 'halo' | 'marker';
+
+function checkpointMaterial(color: number, opacity: number, wireframe: boolean, depthTest = true): THREE.MeshBasicMaterial {
+    return new THREE.MeshBasicMaterial({
+        color,
+        wireframe,
+        transparent: true,
+        opacity,
+        depthTest,
+        depthWrite: false,
+        fog: false,
+        toneMapped: false,
+    });
+}
+
+function markCheckpointVisual(mesh: THREE.Mesh, checkpointId: string, role: CheckpointVisualRole): void {
+    mesh.userData.checkpointId = checkpointId;
+    mesh.userData.checkpointRole = role;
+}
+
 function updateCheckpointVisuals(): void {
     if (!checkpointRoot || !activeState || !activePackage) return;
     const progress = activeState.progress.get('local');
     if (!progress) return;
     const checkpoints = orderedCheckpoints(activePackage.params);
     const active = checkpoints[progress.nextCheckpointIndex];
+    if ((active?.id ?? null) === activeCheckpointVisualId) return;
+    activeCheckpointVisualId = active?.id ?? null;
     checkpointRoot.traverse(object => {
         if (!(object instanceof THREE.Mesh)) return;
         if (!('checkpointId' in object.userData)) return;
         const material = object.material;
         if (Array.isArray(material)) return;
-        material.color.set(object.userData.checkpointId === active?.id ? 0x80ff72 : 0xa0c4ff);
-        material.opacity = object.userData.checkpointId === active?.id ? 0.8 : 0.25;
+        const isActive = object.userData.checkpointId === active?.id;
+        const role = object.userData.checkpointRole as CheckpointVisualRole;
+        object.visible = role === 'ring' || isActive;
+        object.renderOrder = isActive ? 20 : 0;
+        material.color.set(isActive ? ACTIVE_GATE_COLOR : FUTURE_GATE_COLOR);
+        material.opacity = isActive
+            ? role === 'halo' ? 0.46 : 1
+            : role === 'ring' ? 0.2 : 0;
+        const wireframe = role === 'ring' && !isActive;
+        const depthTest = !isActive;
+        if (material.wireframe !== wireframe || material.depthTest !== depthTest) {
+            material.wireframe = wireframe;
+            material.depthTest = depthTest;
+            material.needsUpdate = true;
+        }
     });
 }
 
@@ -421,12 +499,19 @@ function updateStatus(): void {
     binding.lapTotal.textContent = String(lapTotal);
     binding.score.textContent = score.toLocaleString();
     binding.time.textContent = formatRunTime(activeState.elapsedMs);
+    const player = activeState.players.get('local');
+    const checkpoint = orderedCheckpoints(activePackage.params)[progress.nextCheckpointIndex];
+    const direction = player && checkpoint
+        ? describeGateDirection(player.x, player.z, player.heading, checkpoint.position.x, checkpoint.position.z)
+        : { arrow: '↑', label: 'ahead', distance: 0 };
+    binding.direction.textContent = `${direction.arrow} ${direction.distance}m`;
+    binding.direction.setAttribute('aria-label', `Next gate ${direction.label}, ${direction.distance} meters`);
     const progressKey = `${progress.completedCheckpoints}:${progress.lap}`;
     if (binding.announcement.dataset.progressKey !== progressKey) {
         binding.announcement.dataset.progressKey = progressKey;
         binding.announcement.textContent = progress.completedCheckpoints === 0
-            ? `${activePackage.manifest.displayName} started. Gate one of ${total}.`
-            : `Gate ${Math.min(progress.completedCheckpoints, total)} cleared. Next gate ${next} of ${total}.`;
+            ? `${activePackage.manifest.displayName} started. Gate one of ${total} is ${direction.label}.`
+            : `Gate ${Math.min(progress.completedCheckpoints, total)} cleared. Gate ${next} is ${direction.label}.`;
     }
 }
 

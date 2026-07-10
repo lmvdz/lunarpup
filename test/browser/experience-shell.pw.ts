@@ -244,8 +244,10 @@ test('React shell owns navigation, extensions, solo mode, pause, layers, and lif
     await expect(page.locator('main')).toHaveAttribute('data-experience-surface', 'play');
     await expect(page.locator('#gamemode-hud')).toBeVisible();
     await expect(page.locator('#gamemode-hud')).toContainText('Crater Circuit');
+    await expect(page.locator('#gamemode-hud')).toContainText(/Gate\s*1\/4/);
     await expect(page.locator('#gamemode-end-run')).toBeVisible();
     await expect(page.locator('[data-experience-layer="hud"] #gamemode-hud')).toHaveCount(1);
+    await page.screenshot({ path: `/tmp/lunarpup-crater-start-${testInfo.project.name}.png`, fullPage: true });
     await expect.poll(() => page.evaluate(() => window.__lpWebSockets?.active)).toBe(2);
     await page.locator('#gamemode-end-run').click();
     await expect(page.locator('[data-experience-layer="menu"] > #gamemode-results')).toBeVisible();

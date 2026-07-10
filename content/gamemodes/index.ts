@@ -13,12 +13,16 @@ export const raceGamemodePackage: GamemodePackageDefinition = {
     params: {
         type: 'race',
         laps: 2,
-        startPosition: { x: 0, y: 8, z: 0 },
+        // Start outside gate one, facing +Z, so the player sees and earns all
+        // four gates instead of spawning inside the first checkpoint volume.
+        startPosition: { x: 0, y: 0, z: -45 },
         checkpoints: [
-            { id: 'start-finish', order: 0, position: { x: 0, y: 8, z: 0 }, radius: 18 },
-            { id: 'ridge-turn', order: 1, position: { x: 120, y: 14, z: 80 }, radius: 22 },
-            { id: 'crater-gate', order: 2, position: { x: 210, y: 12, z: -50 }, radius: 22 },
-            { id: 'home-stretch', order: 3, position: { x: 70, y: 9, z: -135 }, radius: 22 },
+            // Gate centers sit about 65% of one radius above local terrain:
+            // high enough to stay readable, low enough to skate through.
+            { id: 'start-finish', order: 0, position: { x: 0, y: 22, z: 0 }, radius: 18 },
+            { id: 'ridge-turn', order: 1, position: { x: 120, y: 62, z: 80 }, radius: 22 },
+            { id: 'crater-gate', order: 2, position: { x: 210, y: 41, z: -50 }, radius: 22 },
+            { id: 'home-stretch', order: 3, position: { x: 70, y: 22, z: -135 }, radius: 22 },
         ],
     },
 };

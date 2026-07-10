@@ -41,7 +41,8 @@
 }
 
 .run-hud-mode,
-.run-hud-goal {
+.run-hud-goal,
+.run-hud-next {
     margin: 0;
 }
 
@@ -66,6 +67,22 @@
 }
 
 .run-hud-goal strong { color: var(--ink-primary); }
+
+.run-hud-next {
+    margin-top: var(--space-1);
+    color: var(--ink-tertiary);
+    font-size: var(--fs-small);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+}
+
+.run-hud-next strong {
+    margin-left: var(--space-1);
+    color: var(--accent-amber);
+    font-family: var(--font-mono);
+    font-size: var(--fs-body);
+    font-variant-numeric: tabular-nums;
+}
 
 .run-hud-divider {
     display: inline-block;

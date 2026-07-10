@@ -213,6 +213,20 @@ export function orderedCheckpoints(params: GamemodeParams): CheckpointDefinition
     return [...params.checkpoints].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }
 
+/** Yaw that makes a default XY-plane torus face its incoming route. */
+export function checkpointApproachYaw(params: GamemodeParams, checkpointIndex: number): number {
+    const checkpoints = orderedCheckpoints(params);
+    const checkpoint = checkpoints[checkpointIndex];
+    if (!checkpoint) return 0;
+    const previous = checkpointIndex === 0
+        ? params.startPosition
+        : checkpoints[checkpointIndex - 1]!.position;
+    return Math.atan2(
+        checkpoint.position.x - previous.x,
+        checkpoint.position.z - previous.z,
+    );
+}
+
 export function processCheckpoint(
     state: RuntimeGamemodeState,
     player: PlayerSnapshot,

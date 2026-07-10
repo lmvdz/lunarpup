@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import type { PlayerSnapshot } from '../net/protocol.ts';
 import { gamemodePackages, parkourGamemodePackage, raceGamemodePackage } from '../../content/gamemodes/index.ts';
-import { calculateScoreBreakdown, createGamemode, createRuntimeState, maybeResetFallenPlayer, processCheckpoint, validateGamemodePackage } from './runtime.ts';
+import { getTerrainHeight } from '../game/terrain.ts';
+import { calculateScoreBreakdown, checkpointApproachYaw, createGamemode, createRuntimeState, maybeResetFallenPlayer, orderedCheckpoints, processCheckpoint, validateGamemodePackage } from './runtime.ts';
 
 function playerAt(id: string, x: number, y: number, z: number): PlayerSnapshot {
     return {
@@ -53,6 +54,45 @@ describe('checkpoint ordering', () => {
         player.z = first.position.z;
         expect(processCheckpoint(state, player)).toBe(true);
         expect(state.progress.get('p1')?.nextCheckpointIndex).toBe(1);
+    });
+});
+
+describe('Crater Circuit gate presentation', () => {
+    test('starts outside gate one and keeps every ring above terrain', () => {
+        const checkpoints = orderedCheckpoints(raceGamemodePackage.params);
+        const first = checkpoints[0]!;
+        const start = raceGamemodePackage.params.startPosition;
+        const startDistance = Math.hypot(
+            first.position.x - start.x,
+            first.position.y - start.y,
+            first.position.z - start.z,
+        );
+
+        expect(checkpoints).toHaveLength(4);
+        expect(startDistance).toBeGreaterThan(first.radius);
+        for (const checkpoint of checkpoints) {
+            const heightAboveTerrain = checkpoint.position.y - getTerrainHeight(
+                checkpoint.position.x,
+                checkpoint.position.z,
+            );
+            expect(heightAboveTerrain).toBeGreaterThan(checkpoint.radius * 0.6);
+            expect(heightAboveTerrain).toBeLessThan(checkpoint.radius * 0.75);
+        }
+    });
+
+    test('faces every ring into its incoming route', () => {
+        const checkpoints = orderedCheckpoints(raceGamemodePackage.params);
+        for (const [index, checkpoint] of checkpoints.entries()) {
+            const previous = index === 0
+                ? raceGamemodePackage.params.startPosition
+                : checkpoints[index - 1]!.position;
+            const dx = checkpoint.position.x - previous.x;
+            const dz = checkpoint.position.z - previous.z;
+            const length = Math.hypot(dx, dz);
+            const yaw = checkpointApproachYaw(raceGamemodePackage.params, index);
+            const facingDot = Math.sin(yaw) * dx / length + Math.cos(yaw) * dz / length;
+            expect(facingDot).toBeCloseTo(1, 6);
+        }
     });
 });
 
