@@ -32,6 +32,9 @@ import {
 } from './playerPhysics.ts';
 import type { GameRuntime } from './types.ts';
 import { getPlayerRoot } from './runtime.ts';
+import { pauseController } from './pause.ts';
+import { runFrame } from './frame.ts';
+import { stepRuntimeExtensions } from './runtimeRegistry.ts';
 
 function tiltBoardToTerrain(runtime: GameRuntime, groundSpeed: number, frameScale: number) {
     const { physics, keys, parts } = runtime;
@@ -331,29 +334,36 @@ function handlePhysics(runtime: GameRuntime, dt: number): { groundSpeed: number;
 
 export function stepSimulation(runtime: GameRuntime, dt: number) {
     if (!runtime.parts) return;
+    const parts = runtime.parts;
 
-    updateTrick(runtime, dt);
-    const { groundSpeed, hoverPulse, inHoverZone } = handlePhysics(runtime, dt);
+    runFrame(dt, pauseController.isPaused(), {
+        stepLocal(step) {
+            updateTrick(runtime, step);
+            handlePhysics(runtime, step);
+            stepRuntimeExtensions(runtime, step);
 
-    if (runtime.multiplayerClient?.isConnected) {
-        const playerGroup = getPlayerRoot(runtime)!;
-        runtime.multiplayerClient.sendState(buildLocalSnapshot(
-            playerGroup,
-            runtime.physics.heading,
-            groundSpeed,
-            runtime.physics.isGrounded,
-            runtime.parts.skateboard.rotation.x,
-            runtime.parts.skateboard.rotation.z,
-        ));
-    }
-
-    const { parts } = runtime;
-    const frameScale = dt * 60;
-    if (Math.abs(hoverPulse) > 0.03 || runtime.physics.isGrounded || inHoverZone) {
-        const time = Date.now() * 0.015;
-        parts.tail.rotation.z = Math.sin(time) * 0.4;
-        animateHoverPads(parts, hoverPulse, runtime.physics.isGrounded, inHoverZone, frameScale);
-    }
+            const { physics } = runtime;
+            if (Math.abs(physics.speed) > 0.05) {
+                const time = Date.now() * 0.015;
+                parts.tail.rotation.z = Math.sin(time) * 0.4;
+                for (let i = 1; i < parts.skateboard.children.length; i++) {
+                    parts.skateboard.children[i]!.rotation.x += physics.speed * 2 * step * 60;
+                }
+            }
+        },
+        present() {
+            if (!runtime.multiplayerClient?.isConnected) return;
+            const playerGroup = getPlayerRoot(runtime)!;
+            runtime.multiplayerClient.sendState(buildLocalSnapshot(
+                playerGroup,
+                runtime.physics.heading,
+                runtime.physics.speed,
+                runtime.physics.isGrounded,
+                parts.skateboard.rotation.x,
+                parts.skateboard.rotation.z,
+            ));
+        },
+    });
 }
 
 export function teleportPlayer(runtime: GameRuntime, x: number, z: number) {

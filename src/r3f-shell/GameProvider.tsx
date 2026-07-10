@@ -18,18 +18,21 @@ import {
     upsertRemotePlayer,
     removeRemotePlayerRecord,
     clearRemotePlayerRecords,
+    updateRemotePlayerTarget,
 } from '../game/multiplayer.ts';
 import type { GameRuntime, RemotePlayerRecord } from '../game/types.ts';
 import { teleportPlayer } from '../game/simulation.ts';
 import { groundClearance } from '../config.ts';
 import { alignPlayerToTerrain, getTerrainHeight } from '../game/terrain.ts';
-import { useGameStore, type ChatLine } from './gameStore.ts';
+import { registerActiveRuntime } from '../game/runtimeRegistry.ts';
+import { createAsyncLifecycleOwner } from '../game/asyncLifecycle.ts';
 
 export type { ChatLine };
 
 type GameContextValue = {
     runtime: RefObject<GameRuntime>;
     ready: RefObject<boolean>;
+    gameReady: boolean;
     remotePlayersRef: RefObject<Map<string, RemotePlayerRecord>>;
     appendChatLine: (kind: ChatLine['kind'], text: string) => void;
     submitChatMessage: (text: string) => boolean;
@@ -46,27 +49,34 @@ const TP_BROADCAST_INTERVAL_MS = 5000;
 export function GameProvider({ children }: { children: ReactNode }) {
     const runtime = useRef(createGameRuntime());
     const ready = useRef(false);
+    const [gameReady, setGameReady] = useState(false);
     const remotePlayersRef = useRef(new Map<string, RemotePlayerRecord>());
+    const [remotePlayerIds, setRemotePlayerIds] = useState<string[]>([]);
+    const [multiplayerConfig, setMultiplayerConfig] = useState<MultiplayerConfig | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        void getMultiplayerConfig().then((config) => {
+            if (!cancelled) setMultiplayerConfig(config);
+        });
+        return () => { cancelled = true; };
+    }, []);
+    const [mpStatus, setMpStatus] = useState<MultiplayerStatus>('disconnected');
+    const [mpStatusDetail, setMpStatusDetail] = useState<string | undefined>();
+    const [mpRoom, setMpRoom] = useState<string | undefined>();
+    const [mpHint, setMpHint] = useState(
+        'Private sessions require the exact invite URL, including its <code>#k=</code> key.',
+    );
+    const [mpPlayers, setMpPlayers] = useState('Just you');
+    const [chatLines, setChatLines] = useState<ChatLine[]>([]);
     const lastOutgoingAt = useRef(0);
     const lastTpBroadcastAt = useRef(0);
     const recentMessages = useRef<{ text: string; at: number }[]>([]);
-    const disconnectMultiplayer = useRef<(() => void) | null>(null);
+    const multiplayerOwner = useRef(createAsyncLifecycleOwner());
     const chatLineId = useRef(0);
     const localPlayerIdRef = useRef('');
 
-    const {
-        multiplayerConfig,
-        setMultiplayerConfig,
-        setRemotePlayerIds,
-        setMpStatus,
-        setMpHint,
-        setMpPlayers,
-        pushChatLine,
-    } = useGameStore();
-
-    useEffect(() => {
-        void getMultiplayerConfig().then(setMultiplayerConfig);
-    }, [setMultiplayerConfig]);
+    useEffect(() => registerActiveRuntime(runtime.current), []);
 
     const syncRemoteIds = useCallback(() => {
         setRemotePlayerIds([...remotePlayersRef.current.keys()]);
@@ -101,12 +111,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }, [pushChatLine]);
 
     const registerPlayerParts = useCallback((parts: NonNullable<GameRuntime['parts']>) => {
+        multiplayerOwner.current.dispose();
         runtime.current.parts = parts;
         const root = parts.playerGroup ?? parts.group;
         root.position.set(0, getTerrainHeight(0, 0) + groundClearance, 0);
         runtime.current.physics.heading = 0;
         alignPlayerToTerrain(root, runtime.current.physics, runtime.current.scratch);
         ready.current = true;
+        setGameReady(true);
 
         if (!multiplayerConfig?.enabled) return;
 
@@ -121,11 +133,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        disconnectMultiplayer.current?.();
         clearRemotePlayerRecords(remotePlayersRef.current);
         syncRemoteIds();
 
-        void initMultiplayer(
+        void multiplayerOwner.current.start((signal) => initMultiplayer(
             runtime.current,
             parts,
             {
@@ -177,18 +188,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
                     if (isLocalMultiplayerId(localPlayerIdRef.current, id)) return;
                     const remote = remotePlayersRef.current.get(id);
                     if (!remote) return;
-                    Object.assign(remote.target, state);
+                    if (updateRemotePlayerTarget(remote, state)) syncRemoteIds();
                 },
             },
-        ).then((disconnect) => {
-            disconnectMultiplayer.current = disconnect;
+            signal,
+        )).catch((error) => {
+            setMpStatus('error');
+            setMpStatusDetail(error instanceof Error ? error.message : 'Multiplayer initialization failed');
         });
     }, [appendChatLine, multiplayerConfig, refreshPlayerList, setMpHint, setMpPlayers, setMpStatus, syncRemoteIds]);
 
     useEffect(() => () => {
-        disconnectMultiplayer.current?.();
-        disconnectMultiplayer.current = null;
+        multiplayerOwner.current.dispose();
         ready.current = false;
+        setGameReady(false);
     }, []);
 
     const submitChatMessage = useCallback((text: string) => {
@@ -260,12 +273,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const value = useMemo<GameContextValue>(() => ({
         runtime,
         ready,
+        gameReady,
         remotePlayersRef,
         appendChatLine,
         submitChatMessage,
         handleTpCommand,
         registerPlayerParts,
-    }), [appendChatLine, handleTpCommand, registerPlayerParts, submitChatMessage]);
+    }), [
+        appendChatLine,
+        chatLines,
+        gameReady,
+        handleTpCommand,
+        mpHint,
+        mpPlayers,
+        mpRoom,
+        mpStatus,
+        mpStatusDetail,
+        multiplayerConfig,
+        registerPlayerParts,
+        remotePlayerIds,
+        submitChatMessage,
+    ]);
 
     return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

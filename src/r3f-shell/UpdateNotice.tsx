@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { showToast } from '../ui/toast.ts';
 
 const POLL_INTERVAL_MS = 60_000;
 
 async function fetchBuildId(): Promise<string | null> {
     try {
-        const res = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (!res.ok) return null;
-        const data = await res.json() as { buildId?: string };
+        const response = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) return null;
+        const data = await response.json() as { buildId?: string };
         return typeof data.buildId === 'string' ? data.buildId : null;
     } catch {
         return null;
@@ -14,42 +15,36 @@ async function fetchBuildId(): Promise<string | null> {
 }
 
 export function UpdateNotice() {
-    const [visible, setVisible] = useState(false);
-
     useEffect(() => {
         let loadedBuildId: string | null = null;
-        let pollTimer: number | null = null;
+        let bannerShown = false;
+        let toastHandle: ReturnType<typeof showToast> | null = null;
 
         async function checkForUpdate() {
             const remoteBuildId = await fetchBuildId();
             if (!remoteBuildId) return;
-
             if (loadedBuildId === null) {
                 loadedBuildId = remoteBuildId;
                 return;
             }
-
-            if (remoteBuildId !== loadedBuildId) {
-                setVisible(true);
+            if (remoteBuildId !== loadedBuildId && !bannerShown) {
+                bannerShown = true;
+                toastHandle = showToast({
+                    message: 'Update available — refresh to get the latest',
+                    actionLabel: 'Refresh',
+                    onAction: () => window.location.reload(),
+                    durationMs: null,
+                });
             }
         }
 
         void checkForUpdate();
-        pollTimer = window.setInterval(() => {
-            void checkForUpdate();
-        }, POLL_INTERVAL_MS);
-
+        const pollTimer = window.setInterval(() => void checkForUpdate(), POLL_INTERVAL_MS);
         return () => {
-            if (pollTimer) clearInterval(pollTimer);
+            window.clearInterval(pollTimer);
+            toastHandle?.dismiss();
         };
     }, []);
 
-    if (!visible) return null;
-
-    return (
-        <div id="update-notice" role="status">
-            <span>Update available — refresh to get the latest</span>
-            <button type="button" onClick={() => window.location.reload()}>Refresh</button>
-        </div>
-    );
+    return null;
 }

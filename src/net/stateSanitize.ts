@@ -4,6 +4,19 @@ const MAX_COORD = 1e6;
 
 type PlayerStateFields = Omit<PlayerSnapshot, 'id' | 'name' | 'color'>;
 
+const COSMETIC_SLOTS = ['board', 'body', 'trail', 'aura'] as const;
+
+function sanitizeCosmetics(value: unknown): PlayerStateFields['cosmetics'] {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const source = value as Record<string, unknown>;
+    const sanitized: NonNullable<PlayerStateFields['cosmetics']> = {};
+    for (const slot of COSMETIC_SLOTS) {
+        const id = source[slot];
+        if (typeof id === 'string' && id.length <= 128) sanitized[slot] = id;
+    }
+    return sanitized;
+}
+
 function finiteCoord(value: unknown, fallback = 0): number {
     const n = Number(value);
     if (!Number.isFinite(n)) return fallback;
@@ -25,5 +38,6 @@ export function sanitizePlayerState(state: PlayerStateFields): PlayerStateFields
         isGrounded: typeof state.isGrounded === 'boolean' ? state.isGrounded : true,
         boardTiltX: finiteCoord(state.boardTiltX),
         boardTiltZ: finiteCoord(state.boardTiltZ),
+        cosmetics: sanitizeCosmetics(state.cosmetics),
     };
 }

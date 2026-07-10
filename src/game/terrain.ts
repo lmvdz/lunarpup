@@ -1,7 +1,55 @@
 import type * as THREE from 'three';
 import type { PhysicsState } from './types.ts';
-import { worldConfig } from '../content/worldConfig.ts';
+import { chunkSize, terrainViewDistance, terrainLodBias } from '../config.ts';
 import { calculateTerrainHeight } from './terrainMath.ts';
+
+export type TerrainChunkDescriptor = {
+    key: string;
+    cx: number;
+    cz: number;
+    lodName: 'near' | 'mid' | 'far';
+    segments: number;
+};
+
+let r3fChunkCount = 0;
+
+export function setR3FTerrainChunkCount(count: number) {
+    r3fChunkCount = count;
+}
+
+export function getRenderedTerrainChunkCount() {
+    return r3fChunkCount;
+}
+
+function chunkKey(cx: number, cz: number) {
+    return `${cx},${cz}`;
+}
+
+export function getChunkLod(distanceInChunks: number, lodBias = terrainLodBias): Pick<TerrainChunkDescriptor, 'lodName' | 'segments'> {
+    // Higher bias pushes the near/mid boundaries further out (more detail, heavier).
+    const bias = lodBias > 0 ? lodBias : 1;
+    if (distanceInChunks <= 1.25 * bias) return { lodName: 'near', segments: 56 };
+    if (distanceInChunks <= 2.25 * bias) return { lodName: 'mid', segments: 28 };
+    return { lodName: 'far', segments: 12 };
+}
+
+export function getTerrainChunkPlan(x: number, z: number): TerrainChunkDescriptor[] {
+    const playerCx = Math.round(x / chunkSize);
+    const playerCz = Math.round(z / chunkSize);
+    const chunks: TerrainChunkDescriptor[] = [];
+
+    for (let dz = -terrainViewDistance; dz <= terrainViewDistance; dz++) {
+        for (let dx = -terrainViewDistance; dx <= terrainViewDistance; dx++) {
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist > terrainViewDistance + 0.35) continue;
+            const cx = playerCx + dx;
+            const cz = playerCz + dz;
+            chunks.push({ key: chunkKey(cx, cz), cx, cz, ...getChunkLod(dist) });
+        }
+    }
+
+    return chunks;
+}
 
 export { calculateTerrainHeight } from './terrainMath.ts';
 

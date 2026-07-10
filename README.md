@@ -22,17 +22,37 @@ bun install
 bun run dev
 ```
 
-Opens a hot-reloading dev server from `index.html`.
+Starts the browser game and API/WebSocket server. Local dev enables the `agent-harness` extension by default through `scripts/dev.ts`.
 
 Run the automated checks:
 
 ```bash
 bun run test
 bun run typecheck
+bun run smoke
 ```
 
 Enable multiplayer with URL parameters such as
-`?multiplayer&room=lunar-park&name=Pup123`.
+`?multiplayer&room=lunar-park&name=Pup123`. Override the API/WebSocket server with `?ws=ws://localhost:3001`.
+
+## Extensions
+
+Runtime extensions live in `content/extensions/<package>/`. Enable them on the server with `EXTENSIONS=package-a,package-b`; disabled extensions register no endpoints and ship no client code. `GET /extensions` lists enabled extensions that expose browser entries, and the browser loader imports each listed entry after game bootstrap.
+
+An extension package is a normal package manifest with `kind: "extension"` plus optional entry paths:
+
+```json
+{
+  "kind": "extension",
+  "displayName": "Example Extension",
+  "serverModule": "./server.ts",
+  "clientModule": "./client.ts"
+}
+```
+
+`serverModule` must export `registerServer(router)`. `clientModule` must export `setupClient()`. Keep package paths relative to the extension directory; the loader rejects paths outside the package root.
+
+`content/extensions/agent-harness/` is the first extension. It owns `POST /agent/event`, the `agent-events` WebSocket channel, the owner-key HUD row, and the Claude Code adapter under `content/extensions/agent-harness/adapters/claude-code/`.
 
 ## Production build
 
@@ -53,61 +73,36 @@ Preview the production build:
 bun run preview
 ```
 
-## Multiplayer (end-to-end encrypted)
-
-Multiplayer is opt-in: append `?multiplayer` to the URL. Two transports are
-supported:
-
-- **HTTP/SSE** (production, Netlify) — players POST state to `/api/mp` and
-  subscribe to an SSE stream at `/api/mp/stream`. State is held in Netlify Blobs.
-- **WebSocket** (local dev) — `bun run dev:server` runs the relay in `src/server.ts`.
-
-### How the encryption works
-
-All player-to-player data — **names, positions, and chat** — is encrypted
-client-to-client with **AES-GCM 256** (Web Crypto). The relay servers (Netlify
-functions + the dev WebSocket server) are **blind relays**: they store and
-forward opaque encrypted envelopes and never hold the room key, so they cannot
-read any player content. They only assign opaque player ids + colours and route
-by a room id.
-
-Key distribution:
-
-- A 256-bit **room key** is carried in the URL **fragment** (`#k=…`). URL
-  fragments are never sent to the server, so the relay never sees the key. If
-  no key is present, the client generates one and writes it to the fragment.
-- The **server-side routing room id** is derived from the key (SHA-256), so the
-  server can route players that share a key without ever learning the key itself.
-- To play together, **share the full URL** (it carries the key in the fragment).
-  Anyone without the key cannot decrypt the room's traffic.
-- A client-computed `seq` counter replaces the old server-side plaintext
-  fingerprint for change-detection, so the relay dedupes without inspecting state.
-
-### A note on IP addresses
-
-End-to-end encryption protects message **content**. The relay still observes
-connecting client IPs at the network/TLS layer — that is fundamental to any
-server you connect to and cannot be hidden by encryption alone. What this change
-*does* guarantee: the relay can no longer link an IP to a player's identity,
-read their chat, or read their positions, and any persisted state (Netlify Blobs)
-is now ciphertext. The server logs also no longer contain player names.
-
 ## Project layout
 
 ```
 src/
-  r3f-shell/        # React app, Canvas, declarative world/player/camera/terrain/UI
-  r3f-shell/main.tsx # Default R3F browser entry point
-  styles.css        # UI styles
-  config.ts         # Game constants
-  game/             # Simulation, terrain, camera, input, tricks, multiplayer
-  net/              # E2E-encrypted multiplayer client (crypto.ts, client.ts, protocol.ts)
-  server.ts         # Bun blind-relay WebSocket server (dev)
-netlify/            # Blind-relay server (functions + edge SSE + room store)
-index.html          # HTML shell
-dist/               # Build output (generated)
-R3F-MIGRATION-PLAN.md # Source-of-truth migration roadmap
-AGENTS.md           # Cross-agent project instructions
+  r3f-shell/           # React app, Canvas, declarative world/player/camera/terrain; main.tsx is the entry
+  styles.css           # HUD, shop, lobby, lootbox, and leaderboard styles
+  config.ts            # Game constants
+  game/                # Mutable runtime, simulation, terrain, input, tricks, frame gating
+  modes/               # Runtime gamemode packages, sampling, and results UI
+  net/                 # getApiBaseUrl(), WebSocket client, shared protocol
+  ui/                  # Product UI bridges and menu/economy helpers pending React shell migration
+  contracts/           # Runtime-validated contracts and storage interfaces
+  extensions/          # Generic client/server extension loaders
+  cosmetics/           # Content-addressed cosmetic package registry
+  solana/              # Devnet SPL token and Metaplex NFT adapters
+  server/              # Bun HTTP/WebSocket modules: rooms, wallet, cosmetics,
+                       # lootbox, gamemodes, leaderboard
+  server.ts            # Bun server wiring; CORS is applied here for all HTTP responses
+content/
+  cosmetics/           # Cosmetic manifests and definitions
+  gamemodes/           # Gamemode manifests and params
+  extensions/          # Runtime extension packages such as agent-harness
+db/migrations/         # Timescale/Postgres schema and continuous aggregates
+docs/                  # Architecture, Solana, lootbox, persistence notes
+scripts/
+  smoke.ts             # End-to-end API/WebSocket smoke gate
+  dev.ts               # Starts game (:3000) and API/WebSocket server (:3001)
+index.html             # HTML shell
+dist/                  # Build output (generated)
+legacy/                # Original saved HTML snapshot
 ```
 
 ## Acknowledgments

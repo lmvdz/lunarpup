@@ -25,5 +25,5 @@ export function SpeedLines() {
         };
     }, [reducedMotion, runtime]);
 
-    return <div id="speed-lines" ref={ref} aria-hidden="true" />;
+    return <div id="speed-lines" className="lp-gameplay" ref={ref} />;
 }

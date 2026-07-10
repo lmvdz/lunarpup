@@ -1,52 +1,81 @@
-# Lunar Pup Agent Guide
+# Lunar Pup agent guide
 
 ## Mission
 
 Lunar Pup is becoming one production React + React Three Fiber (R3F) game. The previous Three.js app is a feature and feel reference, not permanent architecture. Preserve useful behavior while replacing transitional ownership with clean, testable systems.
 
-Read this file, `CONTRIBUTING.md`, and `R3F-MIGRATION-PLAN.md` before changing code. The migration plan is the current roadmap until a `plans/` directory is introduced.
+## Dev workflow
 
-## Start and finish every bounded batch
+- Install: `bun install`.
+- Run the full local app with `bun run dev`; it starts the browser game on port `3000` and the Bun API/WebSocket server on port `3001`.
+- Run server only with `bun run dev:server`; run game only with `bun run dev:game`.
+- Verify changed work with the narrow test first, then `bun run typecheck`, `bun test`, and `bun run smoke`. The package `verify` chain runs all three.
+- Browser URL params:
+  - `?multiplayer` enables multiplayer.
+  - `?room=<roomId>` selects the multiplayer room.
+  - `?name=<displayName>` sets the local player name.
+  - `?ws=ws://host:port` overrides both WebSocket and HTTP API base resolution through `getApiBaseUrl()` in `src/net/protocol.ts`.
 
-1. Run `git status -sb`; do not overwrite unrelated work.
-2. Read the relevant checklist section and claim only one coherent surface.
-3. Check open upstream PRs/issues before overlapping work, as required by `CONTRIBUTING.md`.
-4. Implement one owner for each system; do not add permanent hybrid fallbacks.
-5. Run the checks appropriate to the change.
-6. Update `R3F-MIGRATION-PLAN.md` with truthful completed work and verification evidence.
-7. Commit one reviewable unit, then fetch `upstream`. Rebase onto `upstream/main` when it advanced; preserve both sides of conflicts. Push with `--force-with-lease` only after a rebase of the branch you own.
+## Environment variables
 
-## Commands
+- `AGENT_EVENT_TOKEN`: required bearer token or `x-agent-event-token` value for `POST /agent/event`.
+- `EXTENSIONS`: comma-separated extension package names loaded from `content/extensions/`; `scripts/dev.ts` defaults to `agent-harness` for local dev.
+- `DATABASE_URL`: when set, persistence uses Postgres/Timescale instead of SQLite. Run `bun run db:migrate` before use. The unverified telemetry view reads `best_time_leaderboards_hourly` in this mode.
+- `TEST_DATABASE_URL`: SQLite database path for tests and smoke runs when `DATABASE_URL` is unset; Postgres integration tests also use it as a Postgres URL when explicitly configured for those tests.
+- `MAINNET_LAUNCH_CONFIRM`: must be exactly `YES_I_AM_SURE` before `scripts/solana/launch-mainnet.ts` will proceed to its interactive human confirmation.
+- `SOLANA_RPC_URL`: optional devnet RPC URL for Solana adapters; default is `https://api.devnet.solana.com`.
+- `DEVNET_TOKEN_MINT`: devnet SPL mint used when constructing `SolanaDevnetTokenService`.
+- `PORT`: API/WebSocket server port; defaults to `3001`.
 
-```bash
-bun install
-bun run dev
-bun run typecheck
-bun test
-bun run build
-bun run preview
-```
+## HTTP endpoints
 
-Use `bun install --backend=copyfile` only if Windows produces a package-link `EPERM` error. `index.html` is the R3F app entry.
+CORS is centralized in `src/server.ts`; do not add per-module CORS headers.
 
-## Architecture and ownership
+- `GET /rooms`: list lobby rooms.
+- `POST /wallet/challenge`: create a devnet wallet sign-in challenge.
+- `POST /wallet/verify`: verify the wallet signature and link the wallet to the player id.
+- `POST /agent/event`: authenticated agent event ingest with owner-scoped WebSocket delivery, only when the `agent-harness` extension is enabled.
+- `GET /extensions`: lists enabled extension client entries, only registered when at least one extension is enabled.
+- `GET /api/cosmetics/catalog`: public cosmetic catalog.
+- `GET /api/cosmetics/inventory?accountId=<id>`: balance, linked wallet, token balance, owned cosmetics, equipped slots, and catalog.
+- `POST /api/cosmetics/buy`: `{ accountId, cosmeticId, currency?: "soft" | "token" }`; token purchases require a linked wallet and injected devnet SPL token service.
+- `POST /api/cosmetics/equip`: `{ accountId, cosmeticId, slot }`.
+- `GET /lootbox/odds` and `GET /api/lootbox/odds`: published Moon Crate odds.
+- `POST /lootbox/open` and `POST /api/lootbox/open`: server-authoritative lootbox roll with ledger event.
+- `GET /leaderboard/:gamemodeId`: untrusted client-telemetry finish times from SQLite ledger, or Timescale continuous aggregate when `DATABASE_URL` is set. These grant no rewards or ranked authority.
 
-- `src/r3f-shell/` is the React application and R3F scene boundary.
-- `GameCanvas.tsx` owns the Canvas and frame orchestration.
+## WebSocket channels
+
+- Default/multiplayer channel: legacy `{ type: "join" | "state" | "leave" | "chat" }` messages.
+- `room`: create, join, leave, list, and start gamemode lobby messages.
+- `gamemode`: unauthenticated `run_sample` telemetry; `reason: "finish"` feeds an explicitly unverified analytics view only. It must not mutate economy or confer ranked authority.
+- `agent-events`: subscribe with `{ channel: "agent-events", type: "subscribe", ownerKey }` for owner-scoped delivery, only when the `agent-harness` extension is enabled.
+
+## Client architecture and ownership (R3F)
+
+- `src/r3f-shell/` is the React application and R3F scene boundary; `index.html` mounts `src/r3f-shell/main.tsx`.
+- `GameProvider.tsx` owns the mutable runtime/session boundary and `GameCanvas.tsx` owns the Canvas and frame orchestration; `useFrame` calls `stepSimulation()` in `src/game/simulation.ts`.
 - `WorldEnvironment.tsx`, `Terrain.tsx`, `Player.tsx`, and `CameraRig.tsx` own their R3F presentation.
-- `src/game/` contains simulation, terrain math, input, tricks, and multiplayer modules. Frame-time state lives in `game/runtime.ts` owned by `GameProvider`.
-- `src/r3f-shell/` is the React application and R3F scene boundary, including all UI panels.
-- `src/content/` defines reusable animal, board, material, and loadout contracts.
-- `src/net/`, `src/server.ts`, and `netlify/` define multiplayer transport and deployment boundaries.
+- `src/game/` contains the mutable runtime, simulation, terrain math, input, tricks, frame gating (`frame.ts`/`pause.ts`), and the narrow gamemode/cosmetic runtime bridge in `runtimeRegistry.ts`. Tested simulation modules (`playerPhysics.ts`, `trickSimulation.ts`, `terrainMath.ts`) must stay pure.
+- `src/ui/` contains React-bound UI bridges. Each surface mounts from `src/r3f-shell/` via a `bind*` function called from a component `useEffect`; do not add imperative DOM setup paths in core bootstrap.
+- Use React state for human-paced UI, session state, and configuration only. Use refs and `useFrame` for transforms, velocity, terrain movement, and animation — never React state for frame-time values.
+- A migrated system gets one owner. Do not render the same player, terrain, camera, or UI from both imperative Three.js and R3F. Dispose geometry, material, listeners, intervals, and transport subscriptions during lifecycle cleanup.
 
-## R3F and React rules
+## Extensions
 
-- Use React state for human-paced UI, session state, and configuration only.
-- Use refs and `useFrame` for transforms, velocity, terrain movement, animation, and other frame-time values. Never put those values in React state.
-- A migrated system gets one owner. Do not render the same player, terrain, camera, or UI from both imperative Three.js and R3F.
-- Dispose geometry, material, listeners, intervals, and transport subscriptions during lifecycle cleanup.
-- Prefer R3F/Drei official APIs when they reduce infrastructure without hiding game logic. Consult current official documentation through Context7 before library-specific code or configuration.
-- Do not add a state library until a concrete coarse UI/session boundary needs it. If added, Zustand is for coarse state only.
+- Extension packages live under `content/extensions/<name>/` and use `kind: "extension"` package manifests.
+- Optional manifest `serverModule` entries export `registerServer(router)`; optional `clientModule` entries export `setupClient()`.
+- The server loader reads `EXTENSIONS`, imports enabled server modules, exposes `GET /extensions`, and serves each enabled client entry.
+- The browser loader fetches `GET /extensions` after bootstrap and imports enabled client entries; core game bootstrap must not import extension UI directly.
+- `content/extensions/agent-harness/` owns the agent event endpoint, WebSocket channel, HUD, and Claude Code adapter.
+
+## Adapters
+
+- Persistence: `createStorageServices()` picks SQLite by default and Postgres/Timescale when `DATABASE_URL` is set.
+- Currency/inventory: `SqliteCurrencyInventoryService` and `PostgresCurrencyInventoryService` implement soft-currency balances, ownership, and economy ledger facts.
+- Solana SPL: `SolanaDevnetTokenService` implements the currency interface plus devnet mint/transfer helpers. Tests must inject mocked RPC services.
+- NFTs: `MetaplexDevnetNftService` mints devnet Metaplex NFTs whose metadata URI embeds the cosmetic package id. Tests must use mocked UMI/RPC clients.
+- Client networking: all browser API calls must derive their base URL via `getApiBaseUrl()` from `src/net/protocol.ts`.
 
 ## Multiplayer and deployment
 
@@ -55,15 +84,9 @@ Use `bun install --backend=copyfile` only if Windows produces a package-link `EP
 - Netlify hosts the static client and HTTP helpers. Long-lived WebSockets require a WebSocket-capable service.
 - Do not replace the transport without protocol tests, reconnect/stale-peer behavior, and a manual multi-client check.
 
-## Quality and review gate
-
-Before asking for review, run `bun run typecheck`, `bun test`, and `bun run build`. For runtime changes, manually check the documented affected behavior in a browser. Before making a PR ready, provide a Netlify preview URL and state its multiplayer limitation if applicable.
-
-Draft PR #7 is merged. Do not reintroduce a vanilla renderer entry or dual ownership paths.
-
 ## Avoid
 
 - Fast workarounds, hidden fallbacks, or custom infrastructure where a supported path exists.
-- Broad rewrites mixed with unrelated visual/features work.
+- Reintroducing a vanilla renderer entry or dual ownership paths.
 - Force-pushing someone else's branch, deleting user work, or resolving conflicts by dropping either side.
-- Claiming a checklist item complete without tests or browser evidence.
+- Claiming work complete without tests or browser evidence.

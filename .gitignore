@@ -5,3 +5,5 @@ legacy
 .netlify
 deno.lock
 version.json
+data
+test-results

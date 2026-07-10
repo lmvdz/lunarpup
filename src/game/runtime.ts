@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { worldConfig } from '../content/worldConfig.ts';
+import { physicsTuningDefaults } from '../config.ts';
 import { createTrickSimulation } from './trickSimulation.ts';
 import type { GameRuntime } from './types.ts';
 
@@ -20,33 +20,8 @@ export function createGameRuntime(): GameRuntime {
         },
         jumpInput: { queuedAt: 0 },
         physics: {
-            mass: 70,
-            thrustForce: 3.35,
-            hoverStiffness: 1.55,
-            hoverDamping: 0.28,
-            maxHoverForce: 5.2,
-            maxHoverRange: 2.6,
-            coastFriction: 0.001,
-            coastDrag: 0.00045,
-            airDrag: 0.008,
-            maxSpeed: 1.25,
-            rotationSpeed: 0.058,
-            gravity: 0.0032,
-            jumpImpulse: 0.16,
-            tiltSmoothing: 0.24,
-            driftSlideMultiplier: 0.06,
-            slideGrip: 0.018,
-            driftGripMultiplier: 0.38,
-            driftThreshold: 0.2,
-            boostMultiplier: 1.95,
-            boostAccelMultiplier: 2.45,
-            airThrustMultiplier: 0.82,
-            airTurnMultiplier: 1.45,
-            airSteerGrip: 0.012,
-            airHoverAssist: 0.55,
-            hoverLandingSpeed: 0.28,
-            cameraBaseFov: cameraDefaults.baseFov,
-            cameraMaxFov: cameraDefaults.maxFov,
+            speed: 0,
+            ...physicsTuningDefaults,
             heading: 0,
             velocity: new THREE.Vector3(),
             isGrounded: true,

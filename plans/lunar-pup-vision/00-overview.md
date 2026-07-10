@@ -1,75 +1,79 @@
-# Lunar Pup — full vision build
+# Lunar Pup — premium playable loop
 
-The game you play while your AI agents work. A Three.js moon-skating game that connects to
-any AI agent harness, entertains you during the dead time, and barks the moment your agent
-needs human input. Cosmetics, gamemodes, and a Solana-powered economy layered on top — all
-built as shareable, mod-like content packages.
+## Outcome
 
-## Product principles
+- A desktop arcade player reaches meaningful skating quickly, understands the goal, finishes a satisfying short run, receives a guaranteed cosmetic, wears it, and chooses to play again.
+- Play is the unmistakable primary action; Customize is character-first; Settings is utility; wallet, paid randomness, mobile shipping, and public matchmaking appear only after evidence supports them.
+- Navigation, identity, economy, preview, accessibility, recovery, and lifecycle behavior have one explicit owner and executable browser evidence.
 
-1. **The harness integration is the moat.** Notification-when-agent-needs-you is the wedge
-   feature; the game must stay interruptible with grace (short runs, instant pause).
-2. **Fun before finance.** The token/NFT layer plugs into a cosmetics system that works
-   without it. A cosmetic is a content-addressed package; an NFT is just an on-chain pointer
-   to a package id. No chain code inside game code.
-3. **Everything is a package.** Cosmetics and gamemodes are content-addressed JSON+asset
-   bundles (sha256 manifest id) — shareable like mods from day one.
-4. **Devnet until a human says otherwise.** All Solana work targets devnet. The mainnet
-   token launch is a script that exists but is gated on explicit human action. Lootboxes
-   ship with disclosed odds and an audit ledger; token-in/NFT-out gambling has real
-   regulatory exposure (BE/NL/UK/AU) and needs counsel + region gating before mainnet.
+## Work
 
-## Architecture direction
+| Concern | Why it exists | Complexity | Touches |
+|---|---|---|---|
+| 13 — Upstream convergence | The current branch is not on the runtime the new plan must target | architectural | runtime, shell, network, server |
+| 14 — Reliable experience shell | Fix broken layering/navigation and establish one interaction language | architectural | shell, navigation, base UI styles |
+| 15 — Replay-worthy solo run | Prove skating has a satisfying skill beat and retry pull before product expansion | architectural | simulation, camera, mode/results flow |
+| 16 — Guest principal and transport | Replace caller-supplied identity with one recoverable wallet-free session | architectural | session, HTTP, browser transport |
+| 17 — Authenticated run lifecycle | Define valid reward-bearing runs without pretending full anti-cheat | architectural | gamemode protocol, run storage |
+| 18 — Transactional economy | Make reward, buy, open, and equip replay-safe and atomic | architectural | persistence, economy APIs |
+| 19 — Reversible pup preview | Make the pup the visual center without mutating live or network state | architectural | R3F model, presentation, preview state |
+| 20 — Guaranteed reward loop | Ship the first complete play → reward → wear → replay journey | architectural | results, rewards, preview, resources |
+| 21 — Customize and ethical acquisition | Add character-first ownership/store flows only after game value is proven | architectural | Customize UI, catalog, earned crate policy |
+| 22 — Private multiplayer continuity | Support invite social play without advertising empty public matchmaking | architectural | room/session lifecycle, reconnect, results |
+| 23 — Desktop release evidence | Validate the launch experience against product, craft, accessibility, and performance budgets | research | browser tests, usability evidence |
+| 24 — Mobile product decision | After the desktop core works, prove touch play or explicitly remain desktop-first | research | touch input, devices, mobile evidence |
 
-- **Foundation first** (concern 01): shared contracts (agent-event protocol, package
-  manifest, cosmetic schema, gamemode interface, room protocol, currency/inventory +
-  event-ledger interfaces), a modular server router, and game-loop extension hooks — so all
-  feature units build against stable seams instead of editing the same files.
-- **Storage**: `bun:sqlite` is the zero-setup dev default behind repository interfaces.
-  **TimescaleDB** is the production adapter (concern 07) for the three genuinely
-  time-series datasets: agent-harness telemetry, race/parkour run samples (doubles as ghost
-  replay data), and the economy/lootbox audit ledger (drop-rate proofs, token-flow
-  analytics). Inventory/room state stays key-value shaped — not Timescale's job.
-- **Execution**: omp-squad fleet; every concern is an isolated worktree agent with a
-  `bunx tsc --noEmit && bun test` acceptance gate, landed via verified merge.
+## Order
 
-## Dependency graph / dispatch waves
+| Batch | Concerns | Why together |
+|---|---|---|
+| 0 | 13 | Every runtime and ownership assumption depends on convergence |
+| 1 | 14 | The shell owns shared navigation and styling choke points; run alone |
+| 2 | 15 | Prove the game loop before building identity, economy, or customization around it |
+| 3 | 16, 19 | Guest/transport work is server/network-scoped; preview is isolated R3F presentation work |
+| 4 | 17 | Builds the authenticated run lifecycle on the principal contract |
+| 5 | 18 | Builds transactional economy commands on authenticated run semantics |
+| 6 | 20 | Integrates run, reward, and preview into the deterministic first-session loop |
+| 7 | 21 | Expands acquisition only after the guaranteed loop works |
+| 8 | 22 | Adds private social continuity after identity and solo replay are proven |
+| 9 | 23 | Produces desktop launch evidence after all launch surfaces are integrated |
+| 10 | 24 | Evaluates mobile as a separate expansion without blocking desktop release |
 
-```
-wave 0:  01-foundation-contracts          (dispatched — everything builds on it)
-wave 1:  02-harness-notifications  ┐
-         03-cosmetics-shop         │
-         04-gamemodes-race-parkour ├─ parallel, after 01 lands
-         05-solana-devnet          │
-         06-rooms-lobbies          │
-         07-timescale-persistence  ┘
-wave 2:  08-lootbox                       (after 03: needs item pools + inventory)
-wave 3:  09-integration-smoke             (after 03/05/07/08: token payments in shop,
-                                           NFT mint on drops, leaderboards, docs, e2e)
-```
+## Dependency graph
 
-## Done means
+| Concern | Blocked by | VERIFY_BLOCKER (30s check) |
+|---|---|---|
+| 13 | — | `git rev-list --left-right --count HEAD...origin/main` reports nonzero divergence today |
+| 14 | 13 | `rg -n '^STATUS: done' plans/lunar-pup-vision/13-upstream-sync.md && git merge-base --is-ancestor origin/main HEAD` |
+| 15 | 14 | `rg -n '^STATUS: done' plans/lunar-pup-vision/14-shop-lobby-v2.md && bun test src/ui/experienceState.test.ts` |
+| 16 | 15 | `rg -n '^STATUS: done' plans/lunar-pup-vision/15-replay-worthy-solo-run.md && bun test src/modes/replayRun.test.ts` |
+| 17 | 16 | `rg -n '^STATUS: done' plans/lunar-pup-vision/16-guest-principal-transport.md && bun test src/server/guestSession.test.ts` |
+| 18 | 17 | `rg -n '^STATUS: done' plans/lunar-pup-vision/17-authenticated-run-lifecycle.md && bun test src/server/runLifecycle.test.ts` |
+| 19 | 15 | `rg -n '^STATUS: done' plans/lunar-pup-vision/15-replay-worthy-solo-run.md && bun test src/modes/replayRun.test.ts` |
+| 20 | 18, 19 | `bun test src/server/economyCommands.test.ts src/ui/previewState.test.ts` and both blocker files say `STATUS: done` |
+| 21 | 20 | `rg -n '^STATUS: done' plans/lunar-pup-vision/20-guaranteed-reward-loop.md && bunx playwright test test/browser/first-session.spec.ts` |
+| 22 | 16, 20, 21 | `bun test src/server/guestSession.test.ts` plus `bunx playwright test test/browser/first-session.spec.ts test/browser/customize.spec.ts`; all blocker files say `STATUS: done` |
+| 23 | 21, 22 | `bunx playwright test test/browser/customize.spec.ts test/browser/private-multiplayer.spec.ts` and both blocker files say `STATUS: done` |
+| 24 | 23 | `rg -n '^STATUS: done' plans/lunar-pup-vision/23-desktop-release-evidence.md && bunx playwright test test/browser/premium-flow.spec.ts` |
 
-Every concern closed, `bunx tsc --noEmit && bun test` green on main, and a live smoke:
-server boots, a fake harness event triggers the in-game notification, a race completes, a
-lootbox opens with ledger entries written, and a devnet wallet round-trip works.
+## Shared quality budgets
 
-## Coordination with in-flight community work
+| Budget | Requirement |
+|---|---|
+| Press feedback | Visible within 100ms; no `transition: all` |
+| Overlay feedback | Loading or result state visible within 100ms; progress/explanation after 2s |
+| Motion vocabulary | 100ms micro, 150ms small entry, 200–250ms overlay, 300–400ms large transition, 500ms absolute cap |
+| Accessibility | WCAG AA contrast, 3:1 focus/icon contrast, 44×44 coarse-pointer targets, complete keyboard path, reduced-motion and sound-off equivalents |
+| Layout | No content jump after initial skeleton; no control or text clipped at supported desktop sizes |
+| Desktop responsiveness | Main menu actionable within 2s under the agreed throttled browser profile; input feedback reaches the next rendered frame; proven run targets p95 frame time ≤18ms on reference hardware |
+| Recovery | No raw codes, lost work, dead ends, or unexplained waits; retry preserves or replays the original operation |
+| Lifecycle | Ten open/close or room-transition cycles return listener, subscription, timer, and scene-resource counts to baseline |
 
-- **PR #2 (aerial trick system)** touches `loop.ts`, `player.ts`, `remotePlayers.ts`,
-  `server.ts`, `state.ts` — the same files concern 01 refactors. Merge order must be
-  agreed in PR comments; whoever lands second rebases and combines both behaviors.
-  The trick system is a natural early consumer of concern 01's loop hooks and of
-  concern 04's scoring interfaces.
-- **Renderer rewrite (discussed in chat, undeclared)**: per CONTRIBUTING.md (PR #3) this needs
-  an issue + draft PR declaring scope before it lands anywhere. It directly affects
-  concern 03 (cosmetics attach to renderables) and concern 04 (mode HUD/visuals) —
-  those define renderer-agnostic seams (cosmetics resolve to attachment points, not
-  concrete meshes) so the rewrite can proceed underneath them.
+## Notes
 
-## Status (2026-07-09)
-
-All nine concerns closed — landed on the fork's integration main, gate green
-(tsc + 48 tests + live e2e smoke), each declared as a draft PR (#4, #6, #8–#12,
-#14, #15, #17; hotfixes #13; research #16). Follow-on concern: 10-ui-overhaul
-(open, on main/PR #16).
+- The harness integration remains the broader product wedge: sessions must stay short, interruptible, and readable on return.
+- Fun before finance remains binding. Wallet identity, token purchasing, paid randomized rewards, tradable value, and mainnet are outside this plan.
+- Chance rewards, if retained, are earned-only at launch with published odds, a skippable reveal, pity protection, and no duplicate loss. Monetization requires separate legal and product approval.
+- Batch 3 is the only parallel implementation batch. Concerns 16 and 19 must use isolated worktrees; all shared shell, camera/input, run, economy, Customize, and multiplayer work is sequential.
+- Estimated execution: 11 batches including convergence and the post-launch mobile decision.
+- This is a plan-only run. Concerns remain open until implemented and verified.

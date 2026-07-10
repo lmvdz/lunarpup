@@ -1,35 +1,16 @@
-import { useRef } from 'react';
-import * as THREE from 'three';
+import { useEffect, useRef, useState } from 'react';
+import { useFrame } from '@react-three/fiber';
 import type { RemotePlayerRecord } from '../game/types.ts';
 import { deckColorFromDog } from '../game/dogTint.ts';
 import { resolveLoadout } from '../content/catalog.ts';
 import { VoxelDogModel, type VoxelDogModelHandle } from './VoxelDogModel.tsx';
-import { useSafeFrame } from './canvasCrash.tsx';
+import {
+    applyRemoteCosmetics,
+    getCosmeticCatalogRevision,
+    subscribeCosmeticCatalog,
+} from '../game/cosmetics.ts';
 
-const remoteLoadout = resolveLoadout();
-
-function animateRemoteHoverPads(
-    skateboard: THREE.Group,
-    speed: number,
-    isGrounded: boolean,
-    frameScale: number,
-) {
-    const pulseStrength = isGrounded ? Math.min(Math.abs(speed) * 1.6, 1.4) : 0.15;
-    const time = Date.now() * 0.012;
-    for (const child of skateboard.children) {
-        if (child.userData.hoverPad !== true) continue;
-        const phase = child.userData.hoverPhase ?? 0;
-        const bob = 1 + Math.sin(time + phase) * 0.08 * (0.35 + pulseStrength);
-        child.scale.y = bob;
-        const material = (child as THREE.Mesh).material;
-        if (material instanceof THREE.MeshStandardMaterial) {
-            material.emissiveIntensity = isGrounded ? 0.35 + pulseStrength * 0.45 : 0.08;
-        }
-        child.rotation.y += speed * 0.35 * frameScale;
-    }
-}
-
-function RemotePlayer({ record }: { record: RemotePlayerRecord }) {
+function RemotePlayer({ record, catalogRevision }: { record: RemotePlayerRecord; catalogRevision: number }) {
     const modelRef = useRef<VoxelDogModelHandle>(null);
 
     useSafeFrame((_, dt) => {
@@ -50,6 +31,12 @@ function RemotePlayer({ record }: { record: RemotePlayerRecord }) {
         }
     });
 
+    useEffect(() => {
+        const model = modelRef.current;
+        if (!model) return;
+        applyRemoteCosmetics(model, record.current.cosmetics);
+    }, [catalogRevision, record, record.cosmeticsRevision]);
+
     return (
         <VoxelDogModel
             ref={modelRef}
@@ -66,10 +53,14 @@ function RemotePlayer({ record }: { record: RemotePlayerRecord }) {
 }
 
 export function RemotePlayers({ records }: { records: RemotePlayerRecord[] }) {
+    const [catalogRevision, setCatalogRevision] = useState(getCosmeticCatalogRevision);
+
+    useEffect(() => subscribeCosmeticCatalog(setCatalogRevision), []);
+
     return (
         <>
             {records.map((record) => (
-                <RemotePlayer key={record.id} record={record} />
+                <RemotePlayer key={record.id} record={record} catalogRevision={catalogRevision} />
             ))}
         </>
     );

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GameRuntime } from './types.ts';
 import { getDisplaySpeed, getSpeedRatio } from './playerPhysics.ts';
 import { getPlayerRoot } from './runtime.ts';
+import { stepMenuOrbit } from './runtimeRegistry.ts';
 
 function lerpAngle(a: number, b: number, t: number) {
     const delta = Math.atan2(Math.sin(b - a), Math.cos(b - a));
@@ -9,6 +10,7 @@ function lerpAngle(a: number, b: number, t: number) {
 }
 
 export function updateCamera(runtime: GameRuntime, camera: THREE.PerspectiveCamera, dt: number) {
+    stepMenuOrbit(runtime, dt);
     const { physics, cameraControl, keys, scratch } = runtime;
     const playerGroup = getPlayerRoot(runtime);
     if (!playerGroup) return;
